@@ -1,0 +1,23 @@
+# Model weights — large binary files, never commit
+checkpoints/openaudio-s1-mini/
+
+# User reference voices (optional — remove if you want to version-control them)
+references/*/
+
+# Environment
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+web/.venv/
+
+# Editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

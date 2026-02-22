@@ -1,0 +1,996 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TTS Fun · FishAudio S1-mini</title>
+    <style>
+      /* ─── Reset & tokens ────────────────────────────────────────────────── */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      :root {
+        --bg: #0f1117;
+        --surface: #1a1d27;
+        --surface2: #222639;
+        --border: #2d3148;
+        --accent: #6c63ff;
+        --accent-h: #8b84ff;
+        --accent-dim: rgba(108, 99, 255, 0.15);
+        --text: #e4e6f0;
+        --muted: #7b7f9e;
+        --success: #3ecf8e;
+        --danger: #f26060;
+        --warn: #f5a623;
+        --radius: 10px;
+        --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+        --font: "Inter", system-ui, sans-serif;
+      }
+
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--font);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      /* ─── Header ──────────────────────────────────────────────────────────── */
+      header {
+        width: 100%;
+        padding: 18px 32px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface);
+      }
+      header .logo {
+        font-size: 1.5rem;
+      }
+      header h1 {
+        font-size: 1.2rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+      header .sub {
+        font-size: 0.78rem;
+        color: var(--muted);
+        margin-left: auto;
+      }
+
+      .status-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--muted);
+        transition: background 0.3s;
+        flex-shrink: 0;
+      }
+      .status-dot.online {
+        background: var(--success);
+        box-shadow: 0 0 6px var(--success);
+      }
+      .status-dot.offline {
+        background: var(--danger);
+        box-shadow: 0 0 6px var(--danger);
+      }
+
+      /* ─── Layout ──────────────────────────────────────────────────────────── */
+      main {
+        width: 100%;
+        max-width: 900px;
+        padding: 32px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+
+      /* ─── Tabs ────────────────────────────────────────────────────────────── */
+      .tabs {
+        display: flex;
+        gap: 4px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 5px;
+      }
+      .tab-btn {
+        flex: 1;
+        padding: 8px 14px;
+        border: none;
+        border-radius: calc(var(--radius) - 3px);
+        background: transparent;
+        color: var(--muted);
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .tab-btn.active {
+        background: var(--accent-dim);
+        color: var(--accent-h);
+      }
+      .tab-btn:hover:not(.active) {
+        background: var(--surface2);
+        color: var(--text);
+      }
+
+      .tab-panel {
+        display: none;
+      }
+      .tab-panel.active {
+        display: block;
+      }
+
+      /* ─── Cards ───────────────────────────────────────────────────────────── */
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 22px 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .card h2 {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text);
+      }
+      .card h2 small {
+        font-size: 0.78rem;
+        color: var(--muted);
+        font-weight: 400;
+        margin-left: 6px;
+      }
+
+      /* ─── Form elements ───────────────────────────────────────────────────── */
+      label {
+        font-size: 0.84rem;
+        color: var(--muted);
+        display: block;
+        margin-bottom: 5px;
+      }
+      textarea,
+      input[type="text"],
+      input[type="number"],
+      select {
+        width: 100%;
+        padding: 10px 13px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        color: var(--text);
+        font-size: 0.9rem;
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+      textarea:focus,
+      input:focus,
+      select:focus {
+        border-color: var(--accent);
+      }
+      textarea {
+        resize: vertical;
+        min-height: 110px;
+      }
+      select option {
+        background: var(--surface);
+      }
+
+      .form-row {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+      }
+      .form-row > * {
+        flex: 1;
+        min-width: 140px;
+      }
+
+      /* ─── Range slider ────────────────────────────────────────────────────── */
+      .slider-wrap {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .slider-wrap input[type="range"] {
+        flex: 1;
+        accent-color: var(--accent);
+        height: 4px;
+        cursor: pointer;
+        background: transparent;
+        border: none;
+        padding: 0;
+      }
+      .slider-val {
+        width: 42px;
+        text-align: right;
+        font-size: 0.85rem;
+        color: var(--accent-h);
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* ─── Buttons ─────────────────────────────────────────────────────────── */
+      .btn {
+        padding: 10px 22px;
+        border: none;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: #fff;
+      }
+      .btn-primary:hover:not(:disabled) {
+        background: var(--accent-h);
+        transform: translateY(-1px);
+      }
+      .btn-danger {
+        background: rgba(242, 96, 96, 0.15);
+        color: var(--danger);
+        border: 1px solid rgba(242, 96, 96, 0.3);
+      }
+      .btn-danger:hover:not(:disabled) {
+        background: rgba(242, 96, 96, 0.25);
+      }
+      .btn-ghost {
+        background: var(--surface2);
+        color: var(--text);
+        border: 1px solid var(--border);
+      }
+      .btn-ghost:hover:not(:disabled) {
+        background: var(--border);
+      }
+      .btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        transform: none !important;
+      }
+      .btn.loading::after {
+        content: "";
+        width: 14px;
+        height: 14px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* ─── Audio player ────────────────────────────────────────────────────── */
+      .audio-section {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 14px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .audio-section audio {
+        width: 100%;
+        accent-color: var(--accent);
+      }
+      .audio-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      /* ─── Reference voices list ───────────────────────────────────────────── */
+      .ref-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .ref-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 0.88rem;
+      }
+      .ref-item .ref-id {
+        flex: 1;
+        font-weight: 500;
+      }
+      .ref-empty {
+        color: var(--muted);
+        font-size: 0.88rem;
+        text-align: center;
+        padding: 18px;
+      }
+
+      /* ─── Upload area ─────────────────────────────────────────────────────── */
+      .upload-area {
+        border: 2px dashed var(--border);
+        border-radius: 8px;
+        padding: 24px;
+        text-align: center;
+        cursor: pointer;
+        transition:
+          border-color 0.2s,
+          background 0.2s;
+        position: relative;
+      }
+      .upload-area:hover,
+      .upload-area.drag-over {
+        border-color: var(--accent);
+        background: var(--accent-dim);
+      }
+      .upload-area input[type="file"] {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        cursor: pointer;
+        width: 100%;
+        height: 100%;
+      }
+      .upload-area .upload-icon {
+        font-size: 2rem;
+        margin-bottom: 6px;
+      }
+      .upload-area .upload-label {
+        font-size: 0.88rem;
+        color: var(--muted);
+      }
+      .upload-area .upload-filename {
+        font-size: 0.9rem;
+        color: var(--accent-h);
+        margin-top: 4px;
+      }
+
+      /* ─── Toast / alerts ──────────────────────────────────────────────────── */
+      #toast-container {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        display: flex;
+        flex-direction: column-reverse;
+        gap: 8px;
+        z-index: 9999;
+      }
+      .toast {
+        padding: 12px 18px;
+        border-radius: 8px;
+        font-size: 0.88rem;
+        font-weight: 500;
+        max-width: 320px;
+        animation: slideIn 0.25s ease;
+        box-shadow: var(--shadow);
+      }
+      .toast.success {
+        background: rgba(62, 207, 142, 0.15);
+        border: 1px solid var(--success);
+        color: var(--success);
+      }
+      .toast.error {
+        background: rgba(242, 96, 96, 0.15);
+        border: 1px solid var(--danger);
+        color: var(--danger);
+      }
+      .toast.info {
+        background: rgba(108, 99, 255, 0.15);
+        border: 1px solid var(--accent);
+        color: var(--accent-h);
+      }
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateX(30px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+
+      /* ─── Responsive ──────────────────────────────────────────────────────── */
+      @media (max-width: 600px) {
+        header {
+          padding: 14px 16px;
+        }
+        .form-row {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <span class="logo">🎙️</span>
+      <h1>TTS Fun</h1>
+      <div id="status-dot" class="status-dot" title="API status"></div>
+      <span id="status-label" class="sub">checking API…</span>
+    </header>
+
+    <main>
+      <!-- Tab bar -->
+      <div class="tabs" role="tablist">
+        <button class="tab-btn active" role="tab" data-tab="generate">
+          Generate Speech
+        </button>
+        <button class="tab-btn" role="tab" data-tab="voices">
+          Voice Library
+        </button>
+        <button class="tab-btn" role="tab" data-tab="clone">
+          Clone a Voice
+        </button>
+      </div>
+
+      <!-- ─── TAB: Generate ─────────────────────────────────────────────────── -->
+      <div id="tab-generate" class="tab-panel active">
+        <div class="card">
+          <h2>Text to Speech <small>FishAudio-S1-mini</small></h2>
+
+          <div>
+            <label for="tts-text">Text</label>
+            <textarea
+              id="tts-text"
+              placeholder="Enter the text you want to synthesise… Emotion markers like (happy) or (whispering) are supported."
+            >
+(excited) Welcome to TTS Fun! This is powered by FishAudio S1-mini — an open-source, high-quality text-to-speech model.</textarea
+            >
+          </div>
+
+          <div class="form-row">
+            <div>
+              <label for="tts-voice"
+                >Reference voice <small>(optional)</small></label
+              >
+              <select id="tts-voice">
+                <option value="">— random voice —</option>
+              </select>
+            </div>
+            <div>
+              <label for="tts-format">Output format</label>
+              <select id="tts-format">
+                <option value="wav">WAV</option>
+                <option value="mp3">MP3</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Advanced parameters (collapsed by default) -->
+          <details>
+            <summary
+              style="
+                cursor: pointer;
+                font-size: 0.85rem;
+                color: var(--muted);
+                user-select: none;
+              "
+            >
+              ⚙️ Advanced parameters
+            </summary>
+            <div
+              style="
+                padding-top: 14px;
+                display: flex;
+                flex-direction: column;
+                gap: 14px;
+              "
+            >
+              <div>
+                <label
+                  >Temperature
+                  <span id="temp-val" class="slider-val">0.8</span></label
+                >
+                <div class="slider-wrap">
+                  <input
+                    type="range"
+                    id="tts-temp"
+                    min="0.1"
+                    max="1.0"
+                    step="0.05"
+                    value="0.8"
+                    oninput="
+                      document.getElementById('temp-val').textContent =
+                        this.value
+                    "
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label
+                  >Top-P
+                  <span id="topp-val" class="slider-val">0.8</span></label
+                >
+                <div class="slider-wrap">
+                  <input
+                    type="range"
+                    id="tts-topp"
+                    min="0.1"
+                    max="1.0"
+                    step="0.05"
+                    value="0.8"
+                    oninput="
+                      document.getElementById('topp-val').textContent =
+                        this.value
+                    "
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label
+                  >Repetition penalty
+                  <span id="rep-val" class="slider-val">1.1</span></label
+                >
+                <div class="slider-wrap">
+                  <input
+                    type="range"
+                    id="tts-rep"
+                    min="0.9"
+                    max="2.0"
+                    step="0.05"
+                    value="1.1"
+                    oninput="
+                      document.getElementById('rep-val').textContent =
+                        this.value
+                    "
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label>Chunk length (tokens)</label>
+                <input
+                  type="number"
+                  id="tts-chunk"
+                  value="200"
+                  min="100"
+                  max="300"
+                  step="10"
+                />
+              </div>
+
+              <div>
+                <label>Seed <small>(leave blank for random)</small></label>
+                <input type="number" id="tts-seed" placeholder="e.g. 42" />
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 8px">
+                <input
+                  type="checkbox"
+                  id="tts-normalize"
+                  checked
+                  style="accent-color: var(--accent); width: 16px; height: 16px"
+                />
+                <label for="tts-normalize" style="margin: 0; cursor: pointer"
+                  >Normalise text (numbers, dates)</label
+                >
+              </div>
+            </div>
+          </details>
+
+          <button id="btn-generate" class="btn btn-primary">
+            <span>▶</span> Generate
+          </button>
+        </div>
+
+        <!-- Audio output -->
+        <div id="audio-out" class="card" style="display: none">
+          <h2>Output</h2>
+          <div class="audio-section">
+            <audio id="audio-player" controls></audio>
+            <div class="audio-actions">
+              <a id="btn-download" class="btn btn-ghost" download="output.wav"
+                >⬇ Download</a
+              >
+              <button id="btn-regen" class="btn btn-ghost">
+                ↻ Re-generate
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- /tab-generate -->
+
+      <!-- ─── TAB: Voice Library ────────────────────────────────────────────── -->
+      <div id="tab-voices" class="tab-panel">
+        <div class="card">
+          <h2>Saved Reference Voices</h2>
+          <button
+            id="btn-refresh-voices"
+            class="btn btn-ghost"
+            style="align-self: flex-start"
+          >
+            ↻ Refresh
+          </button>
+          <div id="ref-list" class="ref-list">
+            <p class="ref-empty">Loading…</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── TAB: Clone a Voice ───────────────────────────────────────────── -->
+      <div id="tab-clone" class="tab-panel">
+        <div class="card">
+          <h2>Clone a Voice</h2>
+          <p style="font-size: 0.87rem; color: var(--muted); line-height: 1.55">
+            Upload a clean reference audio clip (10–30 seconds, WAV or MP3)
+            together with an accurate transcript. The cloned voice will be saved
+            and available in the
+            <em>Generate</em> tab.
+          </p>
+
+          <div>
+            <label for="clone-id"
+              >Voice ID
+              <small>(letters, numbers, hyphens, spaces)</small></label
+            >
+            <input
+              type="text"
+              id="clone-id"
+              placeholder="e.g. my-voice"
+              pattern="[a-zA-Z0-9\-_ ]+"
+              maxlength="64"
+            />
+          </div>
+
+          <div>
+            <label>Reference audio</label>
+            <div class="upload-area" id="upload-area">
+              <input type="file" id="clone-audio" accept="audio/*" />
+              <div class="upload-icon">🎤</div>
+              <div class="upload-label">
+                Click or drag &amp; drop an audio file here
+              </div>
+              <div class="upload-filename" id="upload-filename"></div>
+            </div>
+          </div>
+
+          <div>
+            <label for="clone-text"
+              >Transcript
+              <small>(what is spoken in the reference clip)</small></label
+            >
+            <textarea
+              id="clone-text"
+              rows="3"
+              placeholder="Paste the exact text spoken in the reference audio…"
+            ></textarea>
+          </div>
+
+          <button id="btn-clone" class="btn btn-primary">
+            <span>＋</span> Save Voice
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <div id="toast-container"></div>
+
+    <script>
+      /* ─── Utilities ─────────────────────────────────────────────────────────── */
+
+      function toast(msg, type = "info", ms = 4000) {
+        const el = document.createElement("div");
+        el.className = `toast ${type}`;
+        el.textContent = msg;
+        document.getElementById("toast-container").appendChild(el);
+        setTimeout(() => el.remove(), ms);
+      }
+
+      function setLoading(btn, yes) {
+        if (yes) {
+          btn.disabled = true;
+          btn.classList.add("loading");
+        } else {
+          btn.disabled = false;
+          btn.classList.remove("loading");
+        }
+      }
+
+      /* ─── Tab routing ───────────────────────────────────────────────────────── */
+
+      document.querySelectorAll(".tab-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document
+            .querySelectorAll(".tab-btn")
+            .forEach((b) => b.classList.remove("active"));
+          document
+            .querySelectorAll(".tab-panel")
+            .forEach((p) => p.classList.remove("active"));
+          btn.classList.add("active");
+          document
+            .getElementById(`tab-${btn.dataset.tab}`)
+            .classList.add("active");
+          if (btn.dataset.tab === "voices") loadVoices();
+          if (btn.dataset.tab === "generate") loadVoiceSelect();
+        });
+      });
+
+      /* ─── API status ────────────────────────────────────────────────────────── */
+
+      async function checkStatus() {
+        const dot = document.getElementById("status-dot");
+        const lbl = document.getElementById("status-label");
+        try {
+          const r = await fetch("/api/status");
+          const d = await r.json();
+          if (d.online) {
+            dot.className = "status-dot online";
+            lbl.textContent = "API online";
+          } else {
+            dot.className = "status-dot offline";
+            lbl.textContent = "API offline";
+          }
+        } catch {
+          dot.className = "status-dot offline";
+          lbl.textContent = "API unreachable";
+        }
+      }
+
+      checkStatus();
+      setInterval(checkStatus, 15000);
+
+      /* ─── Voice select (Generate tab) ──────────────────────────────────────── */
+
+      async function loadVoiceSelect() {
+        const sel = document.getElementById("tts-voice");
+        const current = sel.value;
+        sel.innerHTML = '<option value="">— random voice —</option>';
+        try {
+          const r = await fetch("/api/references/list");
+          if (!r.ok) return;
+          const d = await r.json();
+          (d.reference_ids || []).forEach((id) => {
+            const opt = document.createElement("option");
+            opt.value = id;
+            opt.textContent = id;
+            if (id === current) opt.selected = true;
+            sel.appendChild(opt);
+          });
+        } catch {
+          /* ignore */
+        }
+      }
+
+      loadVoiceSelect();
+
+      /* ─── Generate TTS ──────────────────────────────────────────────────────── */
+
+      const btnGenerate = document.getElementById("btn-generate");
+      const btnRegen = document.getElementById("btn-regen");
+
+      async function doGenerate() {
+        const text = document.getElementById("tts-text").value.trim();
+        if (!text) {
+          toast("Please enter some text.", "error");
+          return;
+        }
+
+        setLoading(btnGenerate, true);
+        setLoading(btnRegen, true);
+
+        const fd = new FormData();
+        fd.append("text", text);
+        fd.append("format", document.getElementById("tts-format").value);
+        fd.append("temperature", document.getElementById("tts-temp").value);
+        fd.append("top_p", document.getElementById("tts-topp").value);
+        fd.append(
+          "repetition_penalty",
+          document.getElementById("tts-rep").value,
+        );
+        fd.append("chunk_length", document.getElementById("tts-chunk").value);
+        fd.append(
+          "normalize",
+          document.getElementById("tts-normalize").checked,
+        );
+
+        const voiceId = document.getElementById("tts-voice").value;
+        if (voiceId) fd.append("reference_id", voiceId);
+
+        const seed = document.getElementById("tts-seed").value;
+        if (seed) fd.append("seed", seed);
+
+        try {
+          const r = await fetch("/api/tts", { method: "POST", body: fd });
+          if (!r.ok) {
+            const err = await r.text();
+            toast(`Error: ${err}`, "error", 6000);
+            return;
+          }
+
+          const blob = await r.blob();
+          const url = URL.createObjectURL(blob);
+          const fmt = document.getElementById("tts-format").value;
+
+          const player = document.getElementById("audio-player");
+          const download = document.getElementById("btn-download");
+          player.src = url;
+          download.href = url;
+          download.download = `output.${fmt}`;
+          document.getElementById("audio-out").style.display = "";
+          player.play().catch(() => {});
+          toast("Audio generated!", "success");
+        } catch (e) {
+          toast(`Request failed: ${e.message}`, "error", 6000);
+        } finally {
+          setLoading(btnGenerate, false);
+          setLoading(btnRegen, false);
+        }
+      }
+
+      btnGenerate.addEventListener("click", doGenerate);
+      btnRegen.addEventListener("click", doGenerate);
+
+      /* ─── Voice library ─────────────────────────────────────────────────────── */
+
+      async function loadVoices() {
+        const listEl = document.getElementById("ref-list");
+        listEl.innerHTML = '<p class="ref-empty">Loading…</p>';
+        try {
+          const r = await fetch("/api/references/list");
+          if (!r.ok) {
+            listEl.innerHTML =
+              '<p class="ref-empty">Failed to load voices.</p>';
+            return;
+          }
+          const d = await r.json();
+          const ids = d.reference_ids || [];
+          if (!ids.length) {
+            listEl.innerHTML =
+              '<p class="ref-empty">No reference voices saved yet. Go to <em>Clone a Voice</em> to add one.</p>';
+            return;
+          }
+          listEl.innerHTML = "";
+          ids.forEach((id) => {
+            const item = document.createElement("div");
+            item.className = "ref-item";
+            item.innerHTML = `
+        <span class="ref-id">🎙 ${id}</span>
+        <button class="btn btn-danger" data-id="${id}" title="Delete">🗑 Delete</button>
+      `;
+            item
+              .querySelector("button")
+              .addEventListener("click", () => deleteVoice(id, item));
+            listEl.appendChild(item);
+          });
+        } catch (e) {
+          listEl.innerHTML = `<p class="ref-empty">Error: ${e.message}</p>`;
+        }
+      }
+
+      async function deleteVoice(id, itemEl) {
+        if (!confirm(`Delete voice "${id}"?`)) return;
+        try {
+          const r = await fetch(`/api/references/${encodeURIComponent(id)}`, {
+            method: "DELETE",
+          });
+          const d = await r.json().catch(() => ({}));
+          if (r.ok && d.success) {
+            itemEl.remove();
+            toast(`Voice "${id}" deleted.`, "success");
+            loadVoiceSelect();
+            if (!document.getElementById("ref-list").children.length) {
+              document.getElementById("ref-list").innerHTML =
+                '<p class="ref-empty">No reference voices saved yet.</p>';
+            }
+          } else {
+            toast(d.message || "Delete failed.", "error");
+          }
+        } catch (e) {
+          toast(`Error: ${e.message}`, "error");
+        }
+      }
+
+      document
+        .getElementById("btn-refresh-voices")
+        .addEventListener("click", loadVoices);
+
+      /* ─── Upload area drag & drop ─────────────────────────────────────────── */
+
+      const uploadArea = document.getElementById("upload-area");
+      const cloneAudioIn = document.getElementById("clone-audio");
+      const uploadFilename = document.getElementById("upload-filename");
+
+      cloneAudioIn.addEventListener("change", () => {
+        uploadFilename.textContent = cloneAudioIn.files[0]?.name || "";
+      });
+      uploadArea.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        uploadArea.classList.add("drag-over");
+      });
+      uploadArea.addEventListener("dragleave", () =>
+        uploadArea.classList.remove("drag-over"),
+      );
+      uploadArea.addEventListener("drop", (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove("drag-over");
+        if (e.dataTransfer.files.length) {
+          cloneAudioIn.files = e.dataTransfer.files;
+          uploadFilename.textContent = e.dataTransfer.files[0].name;
+        }
+      });
+
+      /* ─── Clone a voice ─────────────────────────────────────────────────────── */
+
+      document
+        .getElementById("btn-clone")
+        .addEventListener("click", async () => {
+          const btn = document.getElementById("btn-clone");
+          const id = document.getElementById("clone-id").value.trim();
+          const text = document.getElementById("clone-text").value.trim();
+          const file = cloneAudioIn.files[0];
+
+          if (!id) {
+            toast("Please enter a Voice ID.", "error");
+            return;
+          }
+          if (!file) {
+            toast("Please upload a reference audio file.", "error");
+            return;
+          }
+          if (!text) {
+            toast("Please enter the transcript.", "error");
+            return;
+          }
+          if (!/^[a-zA-Z0-9\-_ ]+$/.test(id)) {
+            toast(
+              "Voice ID may only contain letters, numbers, hyphens, underscores, and spaces.",
+              "error",
+            );
+            return;
+          }
+
+          setLoading(btn, true);
+          const fd = new FormData();
+          fd.append("id", id);
+          fd.append("text", text);
+          fd.append("audio", file);
+
+          try {
+            const r = await fetch("/api/references/add", {
+              method: "POST",
+              body: fd,
+            });
+            const d = await r.json().catch(() => ({}));
+            if ((r.ok || r.status === 200) && d.success) {
+              toast(
+                `Voice "${id}" saved! You can now use it in Generate.`,
+                "success",
+              );
+              document.getElementById("clone-id").value = "";
+              document.getElementById("clone-text").value = "";
+              cloneAudioIn.value = "";
+              uploadFilename.textContent = "";
+              loadVoiceSelect();
+            } else {
+              toast(d.message || `Failed (HTTP ${r.status}).`, "error", 6000);
+            }
+          } catch (e) {
+            toast(`Request failed: ${e.message}`, "error", 6000);
+          } finally {
+            setLoading(btn, false);
+          }
+        });
+    </script>
+  </body>
+</html>

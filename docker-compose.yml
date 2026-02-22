@@ -1,0 +1,82 @@
+name: tts-fun
+
+services:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Fish Speech API server  (FishAudio-S1-mini)
+  # ─────────────────────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+      target: server
+      args:
+        BACKEND: ${BACKEND:-cuda}
+        CUDA_VER: ${CUDA_VER:-12.6.0}
+        UV_EXTRA: ${UV_EXTRA:-cu126}
+        PY_VER: ${PY_VER:-3.12}
+        UV_VERSION: ${UV_VERSION:-0.8.15}
+    image: tts-fun-api:${BACKEND:-cuda}
+    container_name: tts-fun-api
+    restart: unless-stopped
+
+    # Mount model weights and reference voices from the host
+    volumes:
+      - ./checkpoints:/app/fish-speech/checkpoints:ro
+      - ./references:/app/fish-speech/references
+
+    environment:
+      BACKEND: ${BACKEND:-cuda}
+      COMPILE: ${COMPILE:-0}
+      API_SERVER_NAME: "0.0.0.0"
+      API_SERVER_PORT: "8080"
+      LLAMA_CHECKPOINT_PATH: "checkpoints/openaudio-s1-mini"
+      DECODER_CHECKPOINT_PATH: "checkpoints/openaudio-s1-mini/codec.pth"
+      DECODER_CONFIG_NAME: "modded_dac_vq"
+
+    # GPU support (remove / comment out this block for CPU-only)
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+    # The web UI talks to the API over the internal Docker network
+    expose:
+      - "8080"
+
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/v1/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 90s
+      retries: 5
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # TTS Fun web UI
+  # ─────────────────────────────────────────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    image: tts-fun-web:latest
+    container_name: tts-fun-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+
+    environment:
+      # The web app talks to the API server via the internal network
+      FISH_API_URL: "http://api:8080"
+
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 10s
+      retries: 3

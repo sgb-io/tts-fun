@@ -1,0 +1,23 @@
+# Ignore large files and irrelevant host directories from Docker build context
+
+# Model weights (mounted at runtime, not baked into the image)
+checkpoints/
+
+# Reference voices (mounted at runtime)
+references/*/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Python caches on the host
+__pycache__/
+*.pyc
+*.pyo
+web/.venv/
