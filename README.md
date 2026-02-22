@@ -199,13 +199,14 @@ $env:CUDA_VER="13.1.0"; $env:UV_EXTRA="cu128"; docker compose up --build
 
 ## Troubleshooting
 
-| Symptom                           | Fix                                                               |
-| --------------------------------- | ----------------------------------------------------------------- |
-| API status shows **offline**      | The API container may still be loading. Wait 60–90 s and refresh. |
-| `CUDA out of memory`              | 12 GB VRAM recommended. Try CPU mode or reduce `chunk_length`.    |
-| No audio output                   | Check browser console and Docker logs: `docker compose logs api`  |
-| Permission error on `references/` | Run `sudo chown -R 1000:1000 ./references`                        |
-| Build fails on `uv sync`          | Check your `CUDA_VER`/`UV_EXTRA` combination and internet access. |
+| Symptom                           | Fix                                                                                                                    |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| API status shows **offline**      | The API container may still be loading. Wait 60–90 s and refresh.                                                      |
+| `CUDA out of memory`              | 12 GB VRAM recommended. Try CPU mode or reduce `chunk_length`.                                                         |
+| CUDA `index out of bounds` crash  | Reference clip is too long — keep it to 30 s or under. The model has a fixed context window; longer clips overflow it. |
+| No audio output                   | Check browser console and Docker logs: `docker compose logs api`                                                       |
+| Permission error on `references/` | Run `sudo chown -R 1000:1000 ./references`                                                                             |
+| Build fails on `uv sync`          | Check your `CUDA_VER`/`UV_EXTRA` combination and internet access.                                                      |
 
 ---
 

@@ -408,7 +408,7 @@
         }
       }
 
-      /* ─── Responsive ──────────────────────────────────────────────────────── */
+      /* ─── Responsive ──────────────────────────────────────────────────────────── */
       @media (max-width: 600px) {
         header {
           padding: 14px 16px;
@@ -416,6 +416,65 @@
         .form-row {
           flex-direction: column;
         }
+      }
+
+      /* ─── YouTube overlay ────────────────────────────────────────────────────── */
+      #yt-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 9990;
+        background: rgba(15, 17, 23, 0.9);
+        backdrop-filter: blur(6px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 20px;
+      }
+      .yt-spinner {
+        width: 56px;
+        height: 56px;
+        border: 4px solid rgba(139, 132, 255, 0.2);
+        border-top-color: var(--accent-h);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      .yt-overlay-title {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--text);
+        text-align: center;
+      }
+      #yt-status-text {
+        font-size: 0.9rem;
+        color: var(--accent-h);
+        text-align: center;
+        max-width: 320px;
+        min-height: 1.4em;
+        transition: opacity 0.3s;
+      }
+      .yt-overlay-hint {
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+      /* ─── Clone tab divider ─────────────────────────────────────────────────── */
+      .or-divider {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 4px 0;
+      }
+      .or-divider::before,
+      .or-divider::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--border);
+      }
+      .or-divider span {
+        font-size: 0.78rem;
+        color: var(--muted);
+        white-space: nowrap;
       }
     </style>
   </head>
@@ -630,8 +689,36 @@
 
       <!-- ─── TAB: Clone a Voice ───────────────────────────────────────────── -->
       <div id="tab-clone" class="tab-panel">
+        <!-- YouTube auto-clone card -->
         <div class="card">
-          <h2>Clone a Voice</h2>
+          <h2>🎬 Clone from YouTube</h2>
+          <p style="font-size: 0.87rem; color: var(--muted); line-height: 1.55">
+            Paste a YouTube URL. The app will download the audio, trim it to the
+            first 30 seconds, extract the auto-generated English captions, and
+            save the result as a new voice — no manual steps needed.
+          </p>
+          <p style="font-size: 0.8rem; color: var(--muted)">
+            ⓘ The video must have English auto-generated captions enabled.
+          </p>
+          <div>
+            <label for="yt-url">YouTube URL</label>
+            <input
+              type="text"
+              id="yt-url"
+              placeholder="https://www.youtube.com/watch?v=…"
+              autocomplete="off"
+            />
+          </div>
+          <button id="btn-yt-clone" class="btn btn-primary">
+            <span>▶</span> Clone from YouTube
+          </button>
+        </div>
+
+        <div class="or-divider"><span>or upload manually</span></div>
+
+        <!-- Manual upload card -->
+        <div class="card">
+          <h2>Manual Upload</h2>
           <p style="font-size: 0.87rem; color: var(--muted); line-height: 1.55">
             Upload a clean reference audio clip (10–30 seconds, WAV or MP3)
             together with an accurate transcript. The cloned voice will be saved
@@ -911,9 +998,52 @@
       const cloneAudioIn = document.getElementById("clone-audio");
       const uploadFilename = document.getElementById("upload-filename");
 
-      cloneAudioIn.addEventListener("change", () => {
-        uploadFilename.textContent = cloneAudioIn.files[0]?.name || "";
-      });
+      const MAX_CLIP_SECONDS = 30;
+
+      function getAudioDuration(file) {
+        return new Promise((resolve) => {
+          const url = URL.createObjectURL(file);
+          const audio = new Audio();
+          audio.addEventListener("loadedmetadata", () => {
+            URL.revokeObjectURL(url);
+            resolve(audio.duration);
+          });
+          audio.addEventListener("error", () => {
+            URL.revokeObjectURL(url);
+            resolve(null); // unknown — let server decide
+          });
+          audio.src = url;
+        });
+      }
+
+      function fmtDuration(s) {
+        const m = Math.floor(s / 60);
+        const sec = Math.round(s % 60);
+        return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
+      }
+
+      async function setCloneFile(file) {
+        if (!file) {
+          uploadFilename.textContent = "";
+          return;
+        }
+        uploadFilename.textContent = file.name;
+        const dur = await getAudioDuration(file);
+        if (dur !== null) {
+          const label = fmtDuration(dur);
+          if (dur > MAX_CLIP_SECONDS) {
+            uploadFilename.textContent = `${file.name} \u2014 \u26a0\ufe0f ${label} (max ${MAX_CLIP_SECONDS}s)`;
+            uploadFilename.style.color = "var(--err, #e05)";
+          } else {
+            uploadFilename.textContent = `${file.name} \u2014 ${label}`;
+            uploadFilename.style.color = "";
+          }
+        }
+      }
+
+      cloneAudioIn.addEventListener("change", () =>
+        setCloneFile(cloneAudioIn.files[0]),
+      );
       uploadArea.addEventListener("dragover", (e) => {
         e.preventDefault();
         uploadArea.classList.add("drag-over");
@@ -926,7 +1056,7 @@
         uploadArea.classList.remove("drag-over");
         if (e.dataTransfer.files.length) {
           cloneAudioIn.files = e.dataTransfer.files;
-          uploadFilename.textContent = e.dataTransfer.files[0].name;
+          setCloneFile(e.dataTransfer.files[0]);
         }
       });
 
@@ -950,6 +1080,16 @@
           }
           if (!text) {
             toast("Please enter the transcript.", "error");
+            return;
+          }
+          const clipDuration = await getAudioDuration(file);
+          if (clipDuration !== null && clipDuration > MAX_CLIP_SECONDS) {
+            toast(
+              `Clip is ${fmtDuration(clipDuration)} — please trim it to ${MAX_CLIP_SECONDS}s or less. ` +
+                "Longer clips exceed the model's context window and will crash.",
+              "error",
+              8000,
+            );
             return;
           }
           if (!/^[a-zA-Z0-9\-_ ]+$/.test(id)) {
@@ -981,6 +1121,7 @@
               document.getElementById("clone-text").value = "";
               cloneAudioIn.value = "";
               uploadFilename.textContent = "";
+              uploadFilename.style.color = "";
               loadVoiceSelect();
             } else {
               toast(d.message || `Failed (HTTP ${r.status}).`, "error", 6000);
@@ -991,6 +1132,82 @@
             setLoading(btn, false);
           }
         });
+
+      /* ─── YouTube Clone ──────────────────────────────────────────────────────── */
+
+      const YT_MSGS = [
+        "Downloading audio from YouTube…",
+        "Trimming to first 30 seconds…",
+        "Extracting transcript from captions…",
+        "Adding voice to library…",
+      ];
+      let ytMsgTimer = null;
+
+      function showYtOverlay() {
+        const el = document.getElementById("yt-overlay");
+        el.style.display = "flex";
+        let i = 0;
+        document.getElementById("yt-status-text").textContent = YT_MSGS[0];
+        ytMsgTimer = setInterval(() => {
+          i = Math.min(i + 1, YT_MSGS.length - 1);
+          document.getElementById("yt-status-text").textContent = YT_MSGS[i];
+        }, 5000);
+      }
+
+      function hideYtOverlay() {
+        document.getElementById("yt-overlay").style.display = "none";
+        if (ytMsgTimer) {
+          clearInterval(ytMsgTimer);
+          ytMsgTimer = null;
+        }
+      }
+
+      document
+        .getElementById("btn-yt-clone")
+        .addEventListener("click", async () => {
+          const url = document.getElementById("yt-url").value.trim();
+          if (!url) {
+            toast("Please enter a YouTube URL.", "error");
+            return;
+          }
+
+          showYtOverlay();
+          try {
+            const r = await fetch("/api/youtube-clone", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ url }),
+            });
+            const d = await r.json().catch(() => ({}));
+            hideYtOverlay();
+            if (r.ok && d.success) {
+              toast(
+                `Voice “${d.id}” cloned and saved! You can now use it in Generate.`,
+                "success",
+                8000,
+              );
+              document.getElementById("yt-url").value = "";
+              loadVoiceSelect();
+            } else {
+              toast(
+                d.detail || d.message || `Failed (HTTP ${r.status}).`,
+                "error",
+                9000,
+              );
+            }
+          } catch (e) {
+            hideYtOverlay();
+            toast(`Request failed: ${e.message}`, "error", 6000);
+          }
+        });
     </script>
+
+    <!-- YouTube clone loading overlay -->
+    <div id="yt-overlay">
+      <div class="yt-spinner"></div>
+      <div class="yt-overlay-title">Cloning voice from YouTube</div>
+      <div id="yt-status-text"></div>
+      <div class="yt-overlay-hint">This may take up to a minute&hellip;</div>
+    </div>
   </body>
 </html>
