@@ -35,16 +35,24 @@
 
 The model weights (~3 GB) are **not** included in the Docker image; you mount them from the host.
 
+> **Before downloading — two required steps:**
+>
+> 1. **Accept the model licence** — visit [fishaudio/openaudio-s1-mini on Hugging Face](https://huggingface.co/fishaudio/openaudio-s1-mini) and click **Agree and access repository**. Downloads will return a 401 error until you do this.
+> 2. **Get a Hugging Face access token** — visit [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens), create a token with at least **Read** scope, and have it ready. The download script will prompt for it (or read it from the `HF_TOKEN` environment variable).
+
 **Windows (PowerShell):**
 
 ```powershell
-.\download_model.ps1          # uses Docker — no Python required on the host
+.\download_model.ps1              # prompts for your HF token
+.\download_model.ps1 -Token hf_xx # or pass it directly
+$env:HF_TOKEN = "hf_xx"; .\download_model.ps1  # or pre-set the env var
 ```
 
 **Linux / macOS / WSL2:**
 
 ```bash
-bash download_model.sh        # uses Docker — no Python required on the host
+bash download_model.sh            # prompts for your HF token
+HF_TOKEN=hf_xx bash download_model.sh  # or pre-set the env var
 ```
 
 After the download you should have:

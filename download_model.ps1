@@ -6,10 +6,26 @@
 #   .\download_model.ps1 -Local     # uses a locally installed uv
 
 param(
-    [switch]$Local
+    [switch]$Local,
+    [string]$Token = $env:HF_TOKEN
 )
 
 $ErrorActionPreference = "Stop"
+
+# Prompt for token if not provided - required for gated models like openaudio-s1-mini
+if (-not $Token) {
+    Write-Host "A Hugging Face token is required (the model is gated)." -ForegroundColor Yellow
+    Write-Host "Get yours at: https://huggingface.co/settings/tokens" -ForegroundColor Yellow
+    Write-Host ""
+    $TokenSecure = Read-Host "HF Token" -AsSecureString
+    $Token = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
+        [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($TokenSecure)
+    )
+    if (-not $Token) {
+        Write-Error "No token provided. Aborting."
+        exit 1
+    }
+}
 
 $ModelId   = "fishaudio/openaudio-s1-mini"
 $LocalDir  = ".\checkpoints\openaudio-s1-mini"
@@ -33,20 +49,23 @@ if ($Local) {
     uv tool run huggingface_hub download $ModelId --local-dir $LocalDir
 } else {
     # Docker path -- no host Python required.
-    # Uses the uv+Python bundled image so uv is in PATH; entrypoint overridden to sh.
-    # uvx (uv tool run) installs and runs huggingface-cli in one step -- no pip needed.
+    # Mounts tools/download_model.py into the container and runs it with uv directly
+    # as the entrypoint -- no sh, no shell quoting, no CLI quirks.
     Write-Host "Downloading via Docker using uv (no host Python required)..." -ForegroundColor Yellow
 
-    $AbsCheckpoints = (Resolve-Path ".\checkpoints").Path
-
-    $ShellCmd = "uvx --from huggingface_hub hf download $ModelId --local-dir /checkpoints/openaudio-s1-mini"
+    $AbsCheckpoints  = (Resolve-Path ".\checkpoints").Path
+    $AbsDownloadScript = (Resolve-Path ".\tools\download_model.py").Path
 
     $DockerArgs = @(
         "run", "--rm",
-        "--entrypoint", "sh",
+        "--entrypoint", "uv",
         "-v", "${AbsCheckpoints}:/checkpoints",
+        "-v", "${AbsDownloadScript}:/download_model.py:ro",
+        "-e", "MODEL_ID=$ModelId",
+        "-e", "LOCAL_DIR=/checkpoints/openaudio-s1-mini",
+        "-e", "HF_TOKEN=$Token",
         "ghcr.io/astral-sh/uv:0.8.15-python3.12-bookworm",
-        "-c", $ShellCmd
+        "run", "--with", "huggingface_hub", "python", "/download_model.py"
     )
 
     & docker @DockerArgs

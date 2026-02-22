@@ -21,3 +21,5 @@ web/.venv/
 # OS
 .DS_Store
 Thumbs.db
+
+hf_access_token.txt
