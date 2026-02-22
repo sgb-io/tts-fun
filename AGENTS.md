@@ -64,7 +64,9 @@ not add instructions or scripts that require host Python.
 ### Containers
 
 - `Dockerfile.api` clones [fishaudio/fish-speech](https://github.com/fishaudio/fish-speech)
-  at **v1.5.1** during the image build. To upgrade, change the `--branch` tag.
+  at **main** rather than a pinned tag, because the openaudio-s1-mini model weights
+  require fields (e.g. `attention_o_bias`) added after the v1.5.1 release. To pin to a
+  specific release once a compatible tag ships, change the clone command in `Dockerfile.api`.
 - `Dockerfile.web` uses `python:3.12-slim` with uv installed from
   `ghcr.io/astral-sh/uv:0.8.15`. It does **not** clone any external repo —
   only the files in `web/` are copied in.

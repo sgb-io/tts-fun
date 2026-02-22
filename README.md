@@ -77,13 +77,13 @@ cp .env.example .env
 
 Key settings:
 
-| Variable   | Default  | Notes                                                                    |
-| ---------- | -------- | ------------------------------------------------------------------------ |
-| `BACKEND`  | `cuda`   | `cuda` for GPU, `cpu` for CPU-only                                       |
-| `CUDA_VER` | `12.6.0` | Must be ≤ the max CUDA version your driver supports — see tip below      |
-| `UV_EXTRA` | `cu126`  | PyTorch CUDA variant — must match `CUDA_VER` (see table below)           |
-| `COMPILE`  | `0`      | `1` enables `torch.compile` (~10× faster, GPU only; first run is slower) |
-| `WEB_PORT` | `3000`   | Host port for the web UI                                                 |
+| Variable   | Default  | Notes                                                                                                        |
+| ---------- | -------- | ------------------------------------------------------------------------------------------------------------ |
+| `BACKEND`  | `cuda`   | `cuda` for GPU, `cpu` for CPU-only                                                                           |
+| `CUDA_VER` | `12.6.0` | Must be ≤ the max CUDA version your driver supports — see tip below                                          |
+| `UV_EXTRA` | `cu126`  | PyTorch wheel variant: `cu126` `cu128` `cu129` `cpu` — see table below for which to use with your `CUDA_VER` |
+| `COMPILE`  | `0`      | `1` enables `torch.compile` (~10× faster, GPU only; first run is slower)                                     |
+| `WEB_PORT` | `3000`   | Host port for the web UI                                                                                     |
 
 #### Finding the right CUDA_VER (Game Ready Driver users)
 
@@ -96,6 +96,13 @@ nvidia-smi
 The top-right of the output shows `CUDA Version: XX.X` — this is the **maximum** CUDA version your current driver supports. The Docker image's `CUDA_VER` must be less than or equal to this number.
 
 Pick the highest row from this table that your driver allows.
+
+| `CUDA_VER` | `UV_EXTRA` | Min driver (Windows) | Notes                                                         |
+| ---------- | ---------- | -------------------- | ------------------------------------------------------------- |
+| `13.1.0`   | `cu128`    | ≥ 576.02             | PyTorch has no cu131 wheels yet; cu128 runs fine on CUDA 13.x |
+| `12.9.0`   | `cu128`    | ≥ 560.94             |                                                               |
+| `12.8.0`   | `cu128`    | ≥ 528.33             |                                                               |
+| `12.6.0`   | `cu126`    | ≥ 527.41             |                                                               |
 
 ---
 
@@ -151,8 +158,8 @@ Host
 │
 Docker Compose
 ├── tts-fun-api           ← fish-speech API server  (port 8080, internal only)
-│   Dockerfile.api          Clones fishaudio/fish-speech v1.5.1
-│                           uv sync --extra cu126 (or cpu)
+│   Dockerfile.api          Clones fishaudio/fish-speech main
+│                           uv sync + torch cu128 (or cpu)
 │                           Starts: uv run tools/api_server.py
 │
 └── tts-fun-web           ← TTS Fun web UI          (port 3000, exposed)
@@ -166,12 +173,10 @@ Docker Compose
 
 ### Updating fish-speech
 
-The API image pins fish-speech to `v1.5.1`. To use a newer release:
+The API image tracks the `main` branch of fish-speech. To force a rebuild with the latest code:
 
 ```bash
-# Edit Dockerfile.api, change the git clone tag:
-#   --branch v1.5.1  →  --branch v<new>
-docker compose build api
+docker compose build --no-cache api
 ```
 
 ### Enabling torch.compile
@@ -187,7 +192,7 @@ The first inference will take longer while kernels are compiled; all subsequent 
 Check what your driver supports with `nvidia-smi` (see the [CUDA_VER table](#finding-the-right-cuda_ver-game-ready-driver-users) in the Configure section), then pass matching values:
 
 ```powershell
-$env:CUDA_VER="12.8.0"; $env:UV_EXTRA="cu128"; docker compose up --build
+$env:CUDA_VER="13.1.0"; $env:UV_EXTRA="cu128"; docker compose up --build
 ```
 
 ---

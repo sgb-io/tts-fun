@@ -1,13 +1,15 @@
 # Dockerfile.api — Fish Speech API server (FishAudio-S1-mini)
 #
 # Build args:
-#   BACKEND   : cuda | cpu          (default: cuda)
-#   CUDA_VER  : e.g. 12.6.0         (default: 12.6.0)
-#   UV_EXTRA  : cu126 | cu128 | cpu (default: cu126)
-#   PY_VER    : 3.12                (default: 3.12)
-#   UV_VERSION: 0.8.15              (default: 0.8.15)
+#   BACKEND   : cuda | cpu                    (default: cuda)
+#   CUDA_VER  : e.g. 12.6.0 | 13.1.0          (default: 12.6.0)
+#   UV_EXTRA  : cu126 | cu128 | cu129 | cpu (default: cu126)
+#   PY_VER    : 3.12                           (default: 3.12)
+#   UV_VERSION: 0.8.15                         (default: 0.8.15)
 #
-# The container does NOT contain model weights; mount them at /app/checkpoints.
+# Note: we clone fish-speech main (not a pinned tag) because the
+# openaudio-s1-mini model weights require fields (e.g. attention_o_bias)
+# that were added after the v1.5.1 release.
 
 ARG BACKEND=cuda
 ARG CUDA_VER=12.6.0
@@ -22,8 +24,11 @@ ARG USER_GID=1000
 
 # ---------------------------------------------------------------------------
 # Base – CUDA variant
+# Note: NVIDIA publishes only plain "runtime" tags for CUDA 13.x (no cudnn-runtime).
+# PyTorch bundles its own cuDNN, so the plain runtime image is sufficient for all
+# supported CUDA versions.
 # ---------------------------------------------------------------------------
-FROM nvidia/cuda:${CUDA_VER}-cudnn-runtime-ubuntu${UBUNTU_VER} AS base-cuda
+FROM nvidia/cuda:${CUDA_VER}-runtime-ubuntu${UBUNTU_VER} AS base-cuda
 ENV DEBIAN_FRONTEND=noninteractive
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
@@ -117,10 +122,11 @@ RUN mkdir -p /app/references \
 
 WORKDIR /app
 
-# Clone fish-speech and install dependencies via uv
-# We pin to v1.5.1 (latest stable release) for reproducibility
-RUN git clone --depth 1 --branch v1.5.1 \
-        https://github.com/fishaudio/fish-speech.git /app/fish-speech
+# Clone fish-speech (main) — the openaudio-s1-mini weights require fields
+# added after v1.5.1, so we track main rather than a pinned release tag.
+RUN git clone --depth 1 \
+        https://github.com/fishaudio/fish-speech.git /app/fish-speech \
+    && chown -R ${USER_UID}:${USER_GID} /app/fish-speech
 
 WORKDIR /app/fish-speech
 
@@ -128,7 +134,10 @@ USER ${USER_UID}:${USER_GID}
 
 RUN --mount=type=cache,target=/tmp/uv-cache,uid=${USER_UID},gid=${USER_GID} \
     uv python pin ${PY_VER} \
-    && uv sync --extra ${UV_EXTRA} --frozen
+    && uv sync \
+    && uv pip install \
+        --index-url https://download.pytorch.org/whl/${UV_EXTRA} \
+        torch torchaudio
 
 # ---------------------------------------------------------------------------
 # API-server stage
