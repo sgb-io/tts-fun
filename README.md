@@ -77,13 +77,25 @@ cp .env.example .env
 
 Key settings:
 
-| Variable   | Default  | Notes                                                                                     |
-| ---------- | -------- | ----------------------------------------------------------------------------------------- |
-| `BACKEND`  | `cuda`   | `cuda` for GPU, `cpu` for CPU-only                                                        |
-| `CUDA_VER` | `12.6.0` | Match your NVIDIA driver; see [supported tags](https://hub.docker.com/r/nvidia/cuda/tags) |
-| `UV_EXTRA` | `cu126`  | PyTorch CUDA variant: `cu126`, `cu128`, `cu129`, or `cpu`                                 |
-| `COMPILE`  | `0`      | `1` enables `torch.compile` (~10× faster, GPU only; first run is slower)                  |
-| `WEB_PORT` | `3000`   | Host port for the web UI                                                                  |
+| Variable   | Default  | Notes                                                                    |
+| ---------- | -------- | ------------------------------------------------------------------------ |
+| `BACKEND`  | `cuda`   | `cuda` for GPU, `cpu` for CPU-only                                       |
+| `CUDA_VER` | `12.6.0` | Must be ≤ the max CUDA version your driver supports — see tip below      |
+| `UV_EXTRA` | `cu126`  | PyTorch CUDA variant — must match `CUDA_VER` (see table below)           |
+| `COMPILE`  | `0`      | `1` enables `torch.compile` (~10× faster, GPU only; first run is slower) |
+| `WEB_PORT` | `3000`   | Host port for the web UI                                                 |
+
+#### Finding the right CUDA_VER (Game Ready Driver users)
+
+Run this in PowerShell (or any terminal):
+
+```powershell
+nvidia-smi
+```
+
+The top-right of the output shows `CUDA Version: XX.X` — this is the **maximum** CUDA version your current driver supports. The Docker image's `CUDA_VER` must be less than or equal to this number.
+
+Pick the highest row from this table that your driver allows.
 
 ---
 
@@ -172,11 +184,11 @@ The first inference will take longer while kernels are compiled; all subsequent 
 
 ### Using a different CUDA version
 
-```bash
-CUDA_VER=12.8.0 UV_EXTRA=cu128 docker compose up --build
-```
+Check what your driver supports with `nvidia-smi` (see the [CUDA_VER table](#finding-the-right-cuda_ver-game-ready-driver-users) in the Configure section), then pass matching values:
 
-Refer to the [CUDA compatibility matrix](https://docs.nvidia.com/deploy/cuda-compatibility/).
+```powershell
+$env:CUDA_VER="12.8.0"; $env:UV_EXTRA="cu128"; docker compose up --build
+```
 
 ---
 
