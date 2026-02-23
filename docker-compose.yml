@@ -89,8 +89,8 @@ services:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/v1/health"]
       interval: 30s
       timeout: 10s
-      start_period: 90s
-      retries: 5
+      start_period: 300s
+      retries: 10
 
   # ─────────────────────────────────────────────────────────────────────────────
   # TTS Fun web UI
