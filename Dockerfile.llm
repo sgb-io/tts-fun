@@ -1,0 +1,29 @@
+# Dockerfile.llm — Ollama LLM server for Podcast script generation
+#
+# Uses the official Ollama image with CUDA support.
+# On first start the configured model is pulled automatically and cached in the
+# ollama_data volume so subsequent starts are instant.
+#
+# Build args:
+#   LLM_MODEL : Ollama model tag to pull (default: qwen2.5:7b)
+#               qwen2.5:7b is fully open-source (Apache 2.0), ~4.7 GB,
+#               and runs comfortably on an RTX 5080 (16 GB VRAM).
+
+ARG LLM_MODEL=qwen2.5:7b
+
+FROM ollama/ollama:latest
+
+ARG LLM_MODEL
+ENV LLM_MODEL=${LLM_MODEL}
+
+# Startup script
+COPY tools/start_llm.sh /start_llm.sh
+RUN chmod +x /start_llm.sh
+
+EXPOSE 11434
+
+# Health check — passes once Ollama's HTTP API responds
+HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=5 \
+    CMD curl -sf http://localhost:11434/api/version || exit 1
+
+ENTRYPOINT ["/start_llm.sh"]
