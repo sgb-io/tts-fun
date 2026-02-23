@@ -2,6 +2,45 @@ name: tts-fun
 
 services:
   # ─────────────────────────────────────────────────────────────────────────────
+  # Ollama LLM server  (Podcast script generation – qwen2.5:7b by default)
+  # Requires NVIDIA GPU. The model is pulled on first start and cached in the
+  # ollama_data volume, so subsequent starts are instant.
+  # ─────────────────────────────────────────────────────────────────────────────
+  llm:
+    build:
+      context: .
+      dockerfile: Dockerfile.llm
+      args:
+        LLM_MODEL: ${LLM_MODEL:-qwen2.5:7b}
+    image: tts-fun-llm:latest
+    container_name: tts-fun-llm
+    restart: unless-stopped
+
+    volumes:
+      - ollama_data:/root/.ollama
+
+    environment:
+      LLM_MODEL: ${LLM_MODEL:-qwen2.5:7b}
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+    expose:
+      - "11434"
+
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:11434/api/version"]
+      interval: 30s
+      timeout: 10s
+      start_period: 180s
+      retries: 5
+
+  # ─────────────────────────────────────────────────────────────────────────────
   # Fish Speech API server  (FishAudio-S1-mini)
   # ─────────────────────────────────────────────────────────────────────────────
   api:
@@ -50,8 +89,8 @@ services:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/v1/health"]
       interval: 30s
       timeout: 10s
-      start_period: 90s
-      retries: 5
+      start_period: 300s
+      retries: 10
 
   # ─────────────────────────────────────────────────────────────────────────────
   # TTS Fun web UI
@@ -73,6 +112,13 @@ services:
     environment:
       # The web app talks to the API server via the internal network
       FISH_API_URL: "http://api:8080"
+      # The web app talks to the LLM server via the internal network
+      LLM_URL: "http://llm:11434"
+      LLM_MODEL: "${LLM_MODEL:-qwen2.5:7b}"
+
+    volumes:
+      # Podcast episode data (JSON, audio clips, final audio)
+      - ./podcast_data:/app/podcast_data
 
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:3000/health"]
@@ -80,3 +126,7 @@ services:
       timeout: 5s
       start_period: 10s
       retries: 3
+
+volumes:
+  # Persists downloaded Ollama models across container restarts
+  ollama_data:

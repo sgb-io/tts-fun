@@ -11,12 +11,15 @@ from __future__ import annotations
 
 import asyncio
 import io
+import json
 import os
 import re
 import shutil
 import tempfile
+import uuid
 import base64
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated
 
@@ -48,6 +51,9 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
 # ---------------------------------------------------------------------------
 
 FISH_API_URL = os.environ.get("FISH_API_URL", "http://localhost:8080").rstrip("/")
+LLM_URL = os.environ.get("LLM_URL", "http://localhost:11434").rstrip("/")
+LLM_MODEL = os.environ.get("LLM_MODEL", "qwen2.5:7b")
+PODCAST_DATA_DIR = Path(os.environ.get("PODCAST_DATA_DIR", "/app/podcast_data"))
 
 # ---------------------------------------------------------------------------
 # App
@@ -388,6 +394,417 @@ async def api_status() -> JSONResponse:
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.get(f"{FISH_API_URL}/v1/health")
+        return JSONResponse({"online": resp.status_code == 200})
+    except Exception:
+        return JSONResponse({"online": False})
+
+
+# ---------------------------------------------------------------------------
+# Podcast Creation Tool
+# ---------------------------------------------------------------------------
+
+SILENCE_GAP_SECONDS = 0.8  # natural pause between speech turns
+
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+
+def _podcast_dir(episode_id: str) -> Path:
+    return PODCAST_DATA_DIR / episode_id
+
+
+def _load_episode(episode_id: str) -> dict:
+    path = _podcast_dir(episode_id) / "episode.json"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Episode not found")
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _save_episode(episode: dict) -> None:
+    d = _podcast_dir(episode["id"])
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "clips").mkdir(exist_ok=True)
+    episode["updated_at"] = datetime.now(timezone.utc).isoformat()
+    with open(d / "episode.json", "w", encoding="utf-8") as f:
+        json.dump(episode, f, indent=2, ensure_ascii=False)
+
+
+# ── Pydantic models ───────────────────────────────────────────────────────────
+
+class PodcastSpeaker(BaseModel):
+    name: str
+    bio: str
+    voice_id: str
+
+
+class CreateEpisodeRequest(BaseModel):
+    title: str
+    speakers: list[PodcastSpeaker]
+    prompt: str
+    length_minutes: int = 5
+
+
+class UpdateEpisodeRequest(BaseModel):
+    title: str | None = None
+    speakers: list[PodcastSpeaker] | None = None
+    prompt: str | None = None
+    length_minutes: int | None = None
+    script: list[dict] | None = None
+    phase: int | None = None
+
+
+# ── Episode CRUD ──────────────────────────────────────────────────────────────
+
+@app.post("/api/podcast/episodes", status_code=201)
+async def create_podcast_episode(req: CreateEpisodeRequest) -> JSONResponse:
+    """Create a new podcast episode (Phase 1)."""
+    if not req.title.strip():
+        raise HTTPException(status_code=400, detail="title is required")
+    if not req.speakers or len(req.speakers) > 4:
+        raise HTTPException(status_code=400, detail="1–4 speakers required")
+    if not req.prompt.strip():
+        raise HTTPException(status_code=400, detail="prompt is required")
+    if not (1 <= req.length_minutes <= 60):
+        raise HTTPException(status_code=400, detail="length_minutes must be 1–60")
+
+    PODCAST_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    now = datetime.now(timezone.utc).isoformat()
+    ep_id = uuid.uuid4().hex[:8]
+    episode: dict = {
+        "id": ep_id,
+        "title": req.title,
+        "speakers": [s.model_dump() for s in req.speakers],
+        "prompt": req.prompt,
+        "length_minutes": req.length_minutes,
+        "script": None,
+        "phase": 1,
+        "final_audio_path": None,
+        "transcript": None,
+        "created_at": now,
+        "updated_at": now,
+    }
+    _save_episode(episode)
+    return JSONResponse(content=episode, status_code=201)
+
+
+@app.get("/api/podcast/episodes")
+async def list_podcast_episodes() -> JSONResponse:
+    """List all podcast episodes (summary, newest first)."""
+    PODCAST_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    episodes = []
+    for d in sorted(PODCAST_DATA_DIR.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
+        ep_file = d / "episode.json"
+        if d.is_dir() and ep_file.exists():
+            with open(ep_file, encoding="utf-8") as f:
+                ep = json.load(f)
+            episodes.append({
+                "id": ep["id"],
+                "title": ep["title"],
+                "phase": ep.get("phase", 1),
+                "length_minutes": ep.get("length_minutes", 5),
+                "speakers": ep.get("speakers", []),
+                "turn_count": len(ep.get("script") or []),
+                "created_at": ep.get("created_at", ""),
+                "updated_at": ep.get("updated_at", ""),
+            })
+    return JSONResponse(content={"episodes": episodes})
+
+
+@app.get("/api/podcast/episodes/{episode_id}")
+async def get_podcast_episode(episode_id: str) -> JSONResponse:
+    """Get full episode details including script."""
+    return JSONResponse(content=_load_episode(episode_id))
+
+
+@app.put("/api/podcast/episodes/{episode_id}")
+async def update_podcast_episode(episode_id: str, req: UpdateEpisodeRequest) -> JSONResponse:
+    """Update episode metadata and/or script."""
+    ep = _load_episode(episode_id)
+    if req.title is not None:
+        ep["title"] = req.title
+    if req.speakers is not None:
+        ep["speakers"] = [s.model_dump() for s in req.speakers]
+    if req.prompt is not None:
+        ep["prompt"] = req.prompt
+    if req.length_minutes is not None:
+        ep["length_minutes"] = req.length_minutes
+    if req.script is not None:
+        ep["script"] = req.script
+    if req.phase is not None:
+        ep["phase"] = req.phase
+    _save_episode(ep)
+    return JSONResponse(content=ep)
+
+
+@app.delete("/api/podcast/episodes/{episode_id}")
+async def delete_podcast_episode(episode_id: str) -> JSONResponse:
+    """Delete an episode and all its files."""
+    d = _podcast_dir(episode_id)
+    if not d.exists():
+        raise HTTPException(status_code=404, detail="Episode not found")
+    shutil.rmtree(d, ignore_errors=True)
+    return JSONResponse(content={"success": True})
+
+
+# ── Script generation (LLM) ───────────────────────────────────────────────────
+
+@app.post("/api/podcast/episodes/{episode_id}/generate-script")
+async def generate_podcast_script(episode_id: str) -> JSONResponse:
+    """Call the local LLM to generate a podcast script for the episode."""
+    ep = _load_episode(episode_id)
+    speakers = ep["speakers"]
+
+    speaker_desc = "\n".join(
+        f"  Speaker {i} – {s['name']}: {s['bio']}"
+        for i, s in enumerate(speakers)
+    )
+    target_turns = max(6, ep["length_minutes"] * 2)
+    target_words = ep["length_minutes"] * 130
+
+    system_msg = (
+        "You are a podcast script writer. "
+        "Respond with valid JSON only — no markdown, no extra text."
+    )
+    user_msg = (
+        f"Create a {ep['length_minutes']}-minute podcast script "
+        f"(~{target_words} words total, ~{target_turns} turns).\n\n"
+        f"Speakers:\n{speaker_desc}\n\n"
+        f"Topic/prompt: {ep['prompt']}\n\n"
+        "Rules:\n"
+        "• Natural conversation with varied turn lengths (15–150 words each)\n"
+        "• Not equally distributed — let it flow like a real podcast\n"
+        "• Include reactions, follow-ups, and relevant tangents\n"
+        "• Plain spoken words only — no stage directions or markdown\n\n"
+        f"Return JSON: {{\"turns\": [{{\"speaker\": 0, \"text\": \"...\"}}, ...]}}\n"
+    )
+    speaker_index_legend = ", ".join(f"{i}={s['name']}" for i, s in enumerate(speakers))
+    user_msg += f"Speaker indices: {speaker_index_legend}"
+
+    try:
+        async with httpx.AsyncClient(timeout=180.0) as client:
+            resp = await client.post(
+                f"{LLM_URL}/api/chat",
+                json={
+                    "model": LLM_MODEL,
+                    "messages": [
+                        {"role": "system", "content": system_msg},
+                        {"role": "user", "content": user_msg},
+                    ],
+                    "stream": False,
+                    "format": "json",
+                },
+            )
+    except httpx.ConnectError:
+        raise HTTPException(
+            status_code=503,
+            detail="LLM service is not reachable. Ensure the LLM container is running.",
+        )
+
+    if resp.status_code != 200:
+        raise HTTPException(
+            status_code=502,
+            detail=f"LLM returned {resp.status_code}: {resp.text[:300]}",
+        )
+
+    content = resp.json().get("message", {}).get("content", "")
+    try:
+        parsed = json.loads(content)
+    except json.JSONDecodeError:
+        log.error("LLM returned invalid JSON: %s", content[:500])
+        raise HTTPException(status_code=502, detail="LLM returned invalid JSON")
+
+    raw_turns = parsed.get("turns", parsed) if isinstance(parsed, dict) else parsed
+    if not isinstance(raw_turns, list):
+        raise HTTPException(status_code=502, detail="Unexpected LLM response structure")
+
+    script = [
+        {
+            # LLM uses "speaker" (0-based index); we store as "speaker_index"
+            "speaker_index": max(0, min(int(t.get("speaker", 0)), len(speakers) - 1)),
+            "text": str(t.get("text", "")).strip(),
+            "audio_path": None,
+        }
+        for t in raw_turns
+        if str(t.get("text", "")).strip()
+    ]
+    if not script:
+        raise HTTPException(status_code=502, detail="LLM generated an empty script")
+
+    ep["script"] = script
+    _save_episode(ep)
+    return JSONResponse(content=ep)
+
+
+# ── Per-turn clip generation ──────────────────────────────────────────────────
+
+@app.post("/api/podcast/episodes/{episode_id}/clips/{turn_index}")
+async def generate_podcast_clip(episode_id: str, turn_index: int) -> JSONResponse:
+    """Generate TTS audio for a single script turn and cache it on disk."""
+    ep = _load_episode(episode_id)
+    script = ep.get("script") or []
+    if not (0 <= turn_index < len(script)):
+        raise HTTPException(status_code=400, detail="Invalid turn index")
+
+    turn = script[turn_index]
+    speaker = ep["speakers"][turn["speaker_index"]]
+
+    payload: dict = {
+        "text": turn["text"],
+        "format": "wav",
+        "temperature": 0.8,
+        "top_p": 0.8,
+        "repetition_penalty": 1.1,
+        "chunk_length": 200,
+        "normalize": True,
+        "streaming": False,
+    }
+    if speaker.get("voice_id"):
+        payload["reference_id"] = speaker["voice_id"]
+
+    try:
+        async with httpx.AsyncClient(timeout=300.0) as client:
+            resp = await client.post(
+                f"{FISH_API_URL}/v1/tts",
+                content=ormsgpack.packb(payload, option=ormsgpack.OPT_SERIALIZE_PYDANTIC),
+                headers={"Content-Type": "application/msgpack"},
+            )
+    except httpx.ConnectError:
+        raise HTTPException(status_code=503, detail="Fish Speech API is not reachable.")
+
+    if resp.status_code != 200:
+        raise HTTPException(status_code=resp.status_code, detail=resp.text)
+
+    clips_dir = _podcast_dir(episode_id) / "clips"
+    clips_dir.mkdir(parents=True, exist_ok=True)
+    (clips_dir / f"{turn_index}.wav").write_bytes(resp.content)
+
+    script[turn_index]["audio_path"] = f"clips/{turn_index}.wav"
+    ep["script"] = script
+    _save_episode(ep)
+    return JSONResponse(content={"success": True, "turn_index": turn_index})
+
+
+@app.get("/api/podcast/episodes/{episode_id}/clips/{turn_index}")
+async def get_podcast_clip(episode_id: str, turn_index: int) -> Response:
+    """Stream the cached WAV audio for a single turn."""
+    path = _podcast_dir(episode_id) / "clips" / f"{turn_index}.wav"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Clip not generated yet")
+    return Response(content=path.read_bytes(), media_type="audio/wav")
+
+
+# ── Episode finalisation ──────────────────────────────────────────────────────
+
+@app.post("/api/podcast/episodes/{episode_id}/finalize")
+async def finalize_podcast_episode(episode_id: str) -> JSONResponse:
+    """Concatenate all clips (with silence gaps) into the final episode audio."""
+    ep = _load_episode(episode_id)
+    script = ep.get("script") or []
+    if not script:
+        raise HTTPException(status_code=400, detail="No script found")
+
+    missing = [i for i, t in enumerate(script) if not t.get("audio_path")]
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Audio not yet generated for turns: {missing}",
+        )
+
+    ep_dir = _podcast_dir(episode_id)
+
+    # Create a short silence clip used between turns
+    silence_path = ep_dir / "silence.wav"
+    sil_proc = await asyncio.create_subprocess_exec(
+        "ffmpeg", "-y",
+        "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono",
+        "-t", str(SILENCE_GAP_SECONDS), "-c:a", "pcm_s16le",
+        str(silence_path),
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    _, sil_err = await asyncio.wait_for(sil_proc.communicate(), timeout=30)
+    if sil_proc.returncode != 0:
+        raise HTTPException(
+            status_code=500,
+            detail=f"ffmpeg silence failed: {sil_err.decode()[:200]}",
+        )
+
+    # Build a concat demuxer file list
+    concat_path = ep_dir / "concat.txt"
+    lines = []
+    for i in range(len(script)):
+        lines.append(f"file '{(ep_dir / 'clips' / f'{i}.wav').resolve()}'")
+        if i < len(script) - 1:
+            lines.append(f"file '{silence_path.resolve()}'")
+    concat_path.write_text("\n".join(lines), encoding="utf-8")
+
+    final_path = ep_dir / "final.wav"
+    concat_proc = await asyncio.create_subprocess_exec(
+        "ffmpeg", "-y",
+        "-f", "concat", "-safe", "0",
+        "-i", str(concat_path),
+        "-ar", "44100", "-ac", "1", "-c:a", "pcm_s16le",
+        str(final_path),
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    _, c_err = await asyncio.wait_for(concat_proc.communicate(), timeout=300)
+    if concat_proc.returncode != 0:
+        raise HTTPException(
+            status_code=500,
+            detail=f"ffmpeg concat failed: {c_err.decode()[:300]}",
+        )
+
+    # Generate transcript
+    transcript_lines = [
+        f"[{ep['speakers'][t['speaker_index']]['name']}]: {t['text']}"
+        for t in script
+    ]
+    transcript = "\n\n".join(transcript_lines)
+    (ep_dir / "transcript.txt").write_text(transcript, encoding="utf-8")
+
+    ep.update(phase=3, final_audio_path="final.wav", transcript=transcript)
+    _save_episode(ep)
+    return JSONResponse(content={"success": True, "episode": ep})
+
+
+@app.get("/api/podcast/episodes/{episode_id}/final")
+async def get_podcast_final_audio(episode_id: str) -> Response:
+    """Download the finalised episode WAV."""
+    ep = _load_episode(episode_id)
+    path = _podcast_dir(episode_id) / "final.wav"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Final audio not yet generated")
+    slug = re.sub(r"[^\w-]", "-", ep.get("title", "episode").lower())[:50].strip("-")
+    return Response(
+        content=path.read_bytes(),
+        media_type="audio/wav",
+        headers={"Content-Disposition": f'attachment; filename="{slug}.wav"'},
+    )
+
+
+@app.get("/api/podcast/episodes/{episode_id}/transcript")
+async def get_podcast_transcript(episode_id: str) -> Response:
+    """Download the episode transcript as plain text."""
+    ep = _load_episode(episode_id)
+    if not ep.get("transcript"):
+        raise HTTPException(status_code=404, detail="Transcript not yet generated")
+    slug = re.sub(r"[^\w-]", "-", ep.get("title", "episode").lower())[:50].strip("-")
+    return Response(
+        content=ep["transcript"].encode("utf-8"),
+        media_type="text/plain; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{slug}-transcript.txt"'},
+    )
+
+
+# ── LLM status ────────────────────────────────────────────────────────────────
+
+@app.get("/api/llm/status")
+async def llm_status() -> JSONResponse:
+    """Check whether the Ollama LLM service is reachable."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(f"{LLM_URL}/api/version")
         return JSONResponse({"online": resp.status_code == 200})
     except Exception:
         return JSONResponse({"online": False})
