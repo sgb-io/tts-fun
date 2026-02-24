@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/ToastProvider";
@@ -41,7 +41,7 @@ export function GeneratePage() {
       .catch(() => {});
   }, []);
 
-  // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Helpers ────────────────────────────────────────────────────────────────
 
   function buildFormData(text: string): FormData {
     const fd = new FormData();
@@ -58,7 +58,7 @@ export function GeneratePage() {
     return fd;
   }
 
-  // â”€â”€ Single-clip generation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Single-clip generation ─────────────────────────────────────────────────
 
   async function doGenerate() {
     const text = textRef.current?.value.trim();
@@ -90,7 +90,7 @@ export function GeneratePage() {
     }
   }
 
-  // â”€â”€ Auto-chunking â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Auto-chunking ──────────────────────────────────────────────────────────
 
   async function doChunk() {
     const text = textRef.current?.value.trim();
@@ -179,7 +179,7 @@ export function GeneratePage() {
 
   const isBusy = loading || chunking || generatingAll || generatingIdx !== null;
 
-  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <>
@@ -193,8 +193,8 @@ export function GeneratePage() {
           <textarea
             id="tts-text"
             ref={textRef}
-            defaultValue="(excited) Welcome to TTS Fun! This is powered by FishAudio S1-mini â€” an open-source, high-quality text-to-speech model."
-            placeholder="Enter the text you want to synthesiseâ€¦"
+            defaultValue="(excited) Welcome to TTS Fun! This is powered by FishAudio S1-mini — an open-source, high-quality text-to-speech model."
+            placeholder="Enter the text you want to synthesise…"
           />
         </div>
 
@@ -226,7 +226,7 @@ export function GeneratePage() {
               Reference voice <small>(optional)</small>
             </label>
             <select id="tts-voice" ref={voiceRef}>
-              <option value="">â€” random voice â€”</option>
+              <option value="">— random voice —</option>
               {voices.map((v) => (
                 <option key={v} value={v}>
                   {v}
@@ -250,7 +250,7 @@ export function GeneratePage() {
 
         <details>
           <summary className={styles.advSummary}>
-            âš™ï¸ Advanced parameters
+            ⚙️ Advanced parameters
           </summary>
           <div className={styles.advBody}>
             <div>
@@ -350,7 +350,7 @@ export function GeneratePage() {
             disabled={isBusy}
             onClick={doChunk}
           >
-            <span>âœ‚</span> Chunk
+            <span>✂</span> Chunk
           </button>
         ) : (
           <button
@@ -358,12 +358,12 @@ export function GeneratePage() {
             disabled={loading}
             onClick={doGenerate}
           >
-            <span>â–¶</span> Generate
+            <span>▶</span> Generate
           </button>
         )}
       </div>
 
-      {/* â”€â”€ Single-clip output (non-chunked mode) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Single-clip output (non-chunked mode) ─────────────────────────── */}
       {!autoChunkEnabled && audioUrl && (
         <div className="card">
           <h2>Output</h2>
@@ -376,21 +376,21 @@ export function GeneratePage() {
                 href={audioUrl}
                 download={`output.${fmt}`}
               >
-                â¬‡ Download
+                ⬇ Download
               </a>
               <button
                 className="btn btn-ghost"
                 onClick={doGenerate}
                 disabled={loading}
               >
-                â†» Re-generate
+                ↻ Re-generate
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* â”€â”€ Chunk review + Generate All â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Chunk review + Generate All ───────────────────────────────────── */}
       {autoChunkEnabled && chunks.length > 0 && (
         <div className="card">
           <div className={styles.chunkCardHeader}>
@@ -405,7 +405,7 @@ export function GeneratePage() {
               disabled={isBusy}
               onClick={doGenerateAll}
             >
-              <span>â–¶â–¶</span> Generate All
+              <span>▶▶</span> Generate All
             </button>
           </div>
 
@@ -425,7 +425,7 @@ export function GeneratePage() {
                     onClick={() => doGenerateOne(idx)}
                     title="Generate this chunk"
                   >
-                    {generatingIdx === idx ? "Generatingâ€¦" : "â–¶ Generate"}
+                    {generatingIdx === idx ? "Generating…" : "▶ Generate"}
                   </button>
                 </div>
 
@@ -444,7 +444,7 @@ export function GeneratePage() {
                       href={chunkAudios[idx]!}
                       download={`chunk-${idx + 1}.${fmt}`}
                     >
-                      â¬‡ Download
+                      ⬇ Download
                     </a>
                   </div>
                 )}
