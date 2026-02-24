@@ -493,10 +493,26 @@
         white-space: nowrap;
         flex-shrink: 0;
       }
-      .speaker-0 { background: rgba(108,99,255,0.2);  color: #8b84ff; border: 1px solid rgba(108,99,255,0.35); }
-      .speaker-1 { background: rgba(62,207,142,0.15); color: #3ecf8e; border: 1px solid rgba(62,207,142,0.3); }
-      .speaker-2 { background: rgba(245,166,35,0.15); color: #f5a623; border: 1px solid rgba(245,166,35,0.3); }
-      .speaker-3 { background: rgba(96,165,250,0.15); color: #60a5fa; border: 1px solid rgba(96,165,250,0.3); }
+      .speaker-0 {
+        background: rgba(108, 99, 255, 0.2);
+        color: #8b84ff;
+        border: 1px solid rgba(108, 99, 255, 0.35);
+      }
+      .speaker-1 {
+        background: rgba(62, 207, 142, 0.15);
+        color: #3ecf8e;
+        border: 1px solid rgba(62, 207, 142, 0.3);
+      }
+      .speaker-2 {
+        background: rgba(245, 166, 35, 0.15);
+        color: #f5a623;
+        border: 1px solid rgba(245, 166, 35, 0.3);
+      }
+      .speaker-3 {
+        background: rgba(96, 165, 250, 0.15);
+        color: #60a5fa;
+        border: 1px solid rgba(96, 165, 250, 0.3);
+      }
 
       .turns-list {
         display: flex;
@@ -538,9 +554,18 @@
         font-size: 0.72rem;
         font-weight: 600;
       }
-      .phase-1 { background: rgba(245,166,35,0.15); color: #f5a623; }
-      .phase-2 { background: rgba(108,99,255,0.15); color: #8b84ff; }
-      .phase-3 { background: rgba(62,207,142,0.15); color: #3ecf8e; }
+      .phase-1 {
+        background: rgba(245, 166, 35, 0.15);
+        color: #f5a623;
+      }
+      .phase-2 {
+        background: rgba(108, 99, 255, 0.15);
+        color: #8b84ff;
+      }
+      .phase-3 {
+        background: rgba(62, 207, 142, 0.15);
+        color: #3ecf8e;
+      }
 
       .episode-item {
         display: flex;
@@ -551,7 +576,10 @@
         border: 1px solid var(--border);
         border-radius: 8px;
       }
-      .ep-info { flex: 1; min-width: 0; }
+      .ep-info {
+        flex: 1;
+        min-width: 0;
+      }
       .ep-title {
         font-weight: 600;
         font-size: 0.92rem;
@@ -587,7 +615,12 @@
         flex-shrink: 0;
         margin-top: 2px;
       }
-      .speaker-fields { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+      .speaker-fields {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
 
       .progress-bar-wrap {
         background: var(--bg);
@@ -913,16 +946,29 @@
 
       <!-- ─── TAB: Podcast Creation ──────────────────────────────────────────── -->
       <div id="tab-podcast" class="tab-panel">
-
         <!-- ── View: Episode List ────────────────────────────────────────────── -->
         <div id="podcast-list-view">
           <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 10px;
+              "
+            >
               <h2>🎙 Podcast Episodes</h2>
-              <div style="display:flex;gap:8px;align-items:center">
+              <div style="display: flex; gap: 8px; align-items: center">
                 <span id="llm-dot" class="status-dot" title="LLM status"></span>
-                <span id="llm-label" style="font-size:0.78rem;color:var(--muted)">checking LLM…</span>
-                <button id="btn-new-episode" class="btn btn-primary btn-sm">＋ New Episode</button>
+                <span
+                  id="llm-label"
+                  style="font-size: 0.78rem; color: var(--muted)"
+                  >checking LLM…</span
+                >
+                <button id="btn-new-episode" class="btn btn-primary btn-sm">
+                  ＋ New Episode
+                </button>
               </div>
             </div>
             <div id="podcast-episodes-list">
@@ -932,10 +978,22 @@
         </div>
 
         <!-- ── View: Phase 1 – Setup & Script ───────────────────────────────── -->
-        <div id="podcast-phase1-view" style="display:none">
-          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-            <button id="btn-back-to-list" class="btn btn-ghost btn-sm">← Episodes</button>
-            <span id="phase1-episode-title" style="font-weight:600;font-size:1rem"></span>
+        <div id="podcast-phase1-view" style="display: none">
+          <div
+            style="
+              display: flex;
+              gap: 8px;
+              align-items: center;
+              margin-bottom: 8px;
+            "
+          >
+            <button id="btn-back-to-list" class="btn btn-ghost btn-sm">
+              ← Episodes
+            </button>
+            <span
+              id="phase1-episode-title"
+              style="font-weight: 600; font-size: 1rem"
+            ></span>
           </div>
 
           <!-- Episode setup card -->
@@ -944,42 +1002,84 @@
 
             <div>
               <label for="ep-title">Episode title</label>
-              <input type="text" id="ep-title" placeholder="e.g. The Future of AI" maxlength="120" />
+              <input
+                type="text"
+                id="ep-title"
+                placeholder="e.g. The Future of AI"
+                maxlength="120"
+              />
             </div>
 
             <div>
-              <label for="ep-prompt">Episode prompt <small>(topic, tangents, style)</small></label>
-              <textarea id="ep-prompt" rows="3" placeholder="e.g. A deep-dive into how large language models work, covering transformers, training, and what the future might look like. Include some debate about AI safety."></textarea>
+              <label for="ep-prompt"
+                >Episode prompt <small>(topic, tangents, style)</small></label
+              >
+              <textarea
+                id="ep-prompt"
+                rows="3"
+                placeholder="e.g. A deep-dive into how large language models work, covering transformers, training, and what the future might look like. Include some debate about AI safety."
+              ></textarea>
             </div>
 
             <div class="form-row">
               <div>
                 <label for="ep-length">Length (minutes)</label>
-                <input type="number" id="ep-length" value="5" min="1" max="60" />
+                <input
+                  type="number"
+                  id="ep-length"
+                  value="5"
+                  min="1"
+                  max="60"
+                />
               </div>
               <div>
                 <label>Speakers <small>(1–4)</small></label>
-                <button id="btn-add-speaker" class="btn btn-ghost btn-sm" style="margin-top:2px">＋ Add speaker</button>
+                <button
+                  id="btn-add-speaker"
+                  class="btn btn-ghost btn-sm"
+                  style="margin-top: 2px"
+                >
+                  ＋ Add speaker
+                </button>
               </div>
             </div>
 
             <!-- Dynamic speaker rows -->
-            <div id="speakers-list" style="display:flex;flex-direction:column;gap:10px"></div>
+            <div
+              id="speakers-list"
+              style="display: flex; flex-direction: column; gap: 10px"
+            ></div>
 
-            <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <div style="display: flex; gap: 8px; flex-wrap: wrap">
               <button id="btn-save-setup" class="btn btn-ghost">💾 Save</button>
-              <button id="btn-generate-script" class="btn btn-primary">✨ Generate Script</button>
+              <button id="btn-generate-script" class="btn btn-primary">
+                ✨ Generate Script
+              </button>
             </div>
           </div>
 
           <!-- Script editor card (shown after generation) -->
-          <div class="card" id="script-editor-card" style="display:none">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+          <div class="card" id="script-editor-card" style="display: none">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 10px;
+              "
+            >
               <h2>Script Editor <small>edit turns freely</small></h2>
-              <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <button id="btn-add-turn" class="btn btn-ghost btn-sm">＋ Add turn</button>
-                <button id="btn-regenerate-script" class="btn btn-ghost btn-sm">↻ Regenerate</button>
-                <button id="btn-approve-script" class="btn btn-primary">✅ Approve Script →</button>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap">
+                <button id="btn-add-turn" class="btn btn-ghost btn-sm">
+                  ＋ Add turn
+                </button>
+                <button id="btn-regenerate-script" class="btn btn-ghost btn-sm">
+                  ↻ Regenerate
+                </button>
+                <button id="btn-approve-script" class="btn btn-primary">
+                  ✅ Approve Script →
+                </button>
               </div>
             </div>
             <div id="script-turns-list" class="turns-list"></div>
@@ -987,51 +1087,120 @@
         </div>
 
         <!-- ── View: Phase 2 – Audio Generation ─────────────────────────────── -->
-        <div id="podcast-phase2-view" style="display:none">
-          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
-            <button id="btn-back-to-script" class="btn btn-ghost btn-sm">← Edit Script</button>
-            <span id="phase2-episode-title" style="font-weight:600;font-size:1rem;flex:1"></span>
-            <button id="btn-generate-all" class="btn btn-primary btn-sm">▶ Generate All Clips</button>
+        <div id="podcast-phase2-view" style="display: none">
+          <div
+            style="
+              display: flex;
+              gap: 8px;
+              align-items: center;
+              margin-bottom: 8px;
+              flex-wrap: wrap;
+            "
+          >
+            <button id="btn-back-to-script" class="btn btn-ghost btn-sm">
+              ← Edit Script
+            </button>
+            <span
+              id="phase2-episode-title"
+              style="font-weight: 600; font-size: 1rem; flex: 1"
+            ></span>
+            <button id="btn-generate-all" class="btn btn-primary btn-sm">
+              ▶ Generate All Clips
+            </button>
           </div>
 
           <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 10px;
+              "
+            >
               <h2>Audio Generation <small>Phase 2 of 3</small></h2>
-              <div style="display:flex;align-items:center;gap:10px">
-                <span id="clips-progress-label" style="font-size:0.82rem;color:var(--muted)"></span>
-                <div class="progress-bar-wrap" style="width:120px">
-                  <div id="clips-progress-bar" class="progress-bar" style="width:0%"></div>
+              <div style="display: flex; align-items: center; gap: 10px">
+                <span
+                  id="clips-progress-label"
+                  style="font-size: 0.82rem; color: var(--muted)"
+                ></span>
+                <div class="progress-bar-wrap" style="width: 120px">
+                  <div
+                    id="clips-progress-bar"
+                    class="progress-bar"
+                    style="width: 0%"
+                  ></div>
                 </div>
               </div>
             </div>
             <div id="audio-turns-list" class="turns-list"></div>
-            <button id="btn-finalize" class="btn btn-primary" style="align-self:flex-end" disabled>
+            <button
+              id="btn-finalize"
+              class="btn btn-primary"
+              style="align-self: flex-end"
+              disabled
+            >
               🎧 Finalize Episode →
             </button>
           </div>
         </div>
 
         <!-- ── View: Phase 3 – Finalized Episode ─────────────────────────────── -->
-        <div id="podcast-phase3-view" style="display:none">
-          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-            <button id="btn-back-to-audio" class="btn btn-ghost btn-sm">← Edit Audio</button>
-            <button id="btn-back-episodes" class="btn btn-ghost btn-sm">⟵ All Episodes</button>
-            <span id="phase3-episode-title" style="font-weight:600;font-size:1rem;flex:1"></span>
+        <div id="podcast-phase3-view" style="display: none">
+          <div
+            style="
+              display: flex;
+              gap: 8px;
+              align-items: center;
+              margin-bottom: 8px;
+            "
+          >
+            <button id="btn-back-to-audio" class="btn btn-ghost btn-sm">
+              ← Edit Audio
+            </button>
+            <button id="btn-back-episodes" class="btn btn-ghost btn-sm">
+              ⟵ All Episodes
+            </button>
+            <span
+              id="phase3-episode-title"
+              style="font-weight: 600; font-size: 1rem; flex: 1"
+            ></span>
           </div>
 
           <div class="card">
             <h2>✅ Episode Complete <small>Phase 3 of 3</small></h2>
             <div class="audio-section">
-              <audio id="final-audio-player" controls style="width:100%"></audio>
+              <audio
+                id="final-audio-player"
+                controls
+                style="width: 100%"
+              ></audio>
               <div class="audio-actions">
-                <a id="btn-download-final" class="btn btn-primary" download>⬇ Download WAV</a>
-                <a id="btn-download-transcript" class="btn btn-ghost" download>📄 Download Transcript</a>
+                <a id="btn-download-final" class="btn btn-primary" download
+                  >⬇ Download WAV</a
+                >
+                <a id="btn-download-transcript" class="btn btn-ghost" download
+                  >📄 Download Transcript</a
+                >
               </div>
             </div>
-            <div id="phase3-transcript" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;font-size:0.82rem;line-height:1.7;white-space:pre-wrap;max-height:300px;overflow-y:auto"></div>
+            <div
+              id="phase3-transcript"
+              style="
+                background: var(--bg);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 14px;
+                font-size: 0.82rem;
+                line-height: 1.7;
+                white-space: pre-wrap;
+                max-height: 300px;
+                overflow-y: auto;
+              "
+            ></div>
           </div>
         </div>
-
       </div>
       <!-- /tab-podcast -->
     </main>
@@ -1482,7 +1651,12 @@
           .replace(/"/g, "&quot;");
       }
 
-      const SPEAKER_COLORS = ["speaker-0", "speaker-1", "speaker-2", "speaker-3"];
+      const SPEAKER_COLORS = [
+        "speaker-0",
+        "speaker-1",
+        "speaker-2",
+        "speaker-3",
+      ];
       const SPEAKER_NUM_COLORS = [
         { bg: "rgba(108,99,255,0.2)", color: "#8b84ff" },
         { bg: "rgba(62,207,142,0.15)", color: "#3ecf8e" },
@@ -1559,7 +1733,9 @@
           for (const ep of eps) {
             const phaseLabels = ["", "✍️ Script", "🔊 Audio", "✅ Done"];
             const phaseBadge = phaseLabels[ep.phase] || "";
-            const speakerNames = (ep.speakers || []).map((s) => s.name).join(", ");
+            const speakerNames = (ep.speakers || [])
+              .map((s) => s.name)
+              .join(", ");
             const item = document.createElement("div");
             item.className = "episode-item";
             item.innerHTML = `
@@ -1574,10 +1750,14 @@
               <button class="btn btn-ghost btn-sm" data-ep-open="${ep.id}">Open</button>
               <button class="btn btn-danger btn-sm" data-ep-del="${ep.id}">🗑</button>
             `;
-            item.querySelector("[data-ep-open]").addEventListener("click", () => openEpisode(ep.id));
-            item.querySelector("[data-ep-del]").addEventListener("click", () =>
-              deletePodcastEpisode(ep.id, item),
-            );
+            item
+              .querySelector("[data-ep-open]")
+              .addEventListener("click", () => openEpisode(ep.id));
+            item
+              .querySelector("[data-ep-del]")
+              .addEventListener("click", () =>
+                deletePodcastEpisode(ep.id, item),
+              );
             listEl.appendChild(item);
           }
         } catch (e) {
@@ -1588,7 +1768,9 @@
       async function deletePodcastEpisode(id, itemEl) {
         if (!confirm("Delete this episode and all its audio files?")) return;
         try {
-          const r = await fetch(`/api/podcast/episodes/${id}`, { method: "DELETE" });
+          const r = await fetch(`/api/podcast/episodes/${id}`, {
+            method: "DELETE",
+          });
           const d = await r.json().catch(() => ({}));
           if (r.ok && d.success) {
             itemEl.remove();
@@ -1640,7 +1822,9 @@
         document.getElementById("ep-length").value = ep ? ep.length_minutes : 5;
 
         // Render speakers
-        renderSpeakerRows(ep ? ep.speakers : [{ name: "", bio: "", voice_id: "" }]);
+        renderSpeakerRows(
+          ep ? ep.speakers : [{ name: "", bio: "", voice_id: "" }],
+        );
 
         // Show/hide script editor
         const scriptCard = document.getElementById("script-editor-card");
@@ -1709,14 +1893,16 @@
         }));
       }
 
-      document.getElementById("btn-add-speaker").addEventListener("click", () => {
-        const rows = document.querySelectorAll(".speaker-row");
-        if (rows.length >= 4) {
-          toast("Maximum 4 speakers.", "error");
-          return;
-        }
-        addSpeakerRow({ name: "", bio: "", voice_id: "" }, rows.length);
-      });
+      document
+        .getElementById("btn-add-speaker")
+        .addEventListener("click", () => {
+          const rows = document.querySelectorAll(".speaker-row");
+          if (rows.length >= 4) {
+            toast("Maximum 4 speakers.", "error");
+            return;
+          }
+          addSpeakerRow({ name: "", bio: "", voice_id: "" }, rows.length);
+        });
 
       /* ── Save episode setup ─────────────────────────────────────────────────── */
       async function saveEpisodeSetup() {
@@ -1725,11 +1911,26 @@
         const length = parseInt(document.getElementById("ep-length").value, 10);
         const speakers = collectSpeakers();
 
-        if (!title) { toast("Please enter an episode title.", "error"); return null; }
-        if (!prompt) { toast("Please enter an episode prompt.", "error"); return null; }
-        if (!speakers.length) { toast("Add at least one speaker.", "error"); return null; }
-        if (speakers.some((s) => !s.name)) { toast("All speakers need a name.", "error"); return null; }
-        if (isNaN(length) || length < 1 || length > 60) { toast("Length must be 1–60 minutes.", "error"); return null; }
+        if (!title) {
+          toast("Please enter an episode title.", "error");
+          return null;
+        }
+        if (!prompt) {
+          toast("Please enter an episode prompt.", "error");
+          return null;
+        }
+        if (!speakers.length) {
+          toast("Add at least one speaker.", "error");
+          return null;
+        }
+        if (speakers.some((s) => !s.name)) {
+          toast("All speakers need a name.", "error");
+          return null;
+        }
+        if (isNaN(length) || length < 1 || length > 60) {
+          toast("Length must be 1–60 minutes.", "error");
+          return null;
+        }
 
         const body = { title, speakers, prompt, length_minutes: length };
 
@@ -1749,9 +1950,13 @@
             });
           }
           ep = await r.json();
-          if (!r.ok) { toast(ep.detail || "Save failed.", "error"); return null; }
+          if (!r.ok) {
+            toast(ep.detail || "Save failed.", "error");
+            return null;
+          }
           currentEpisode = ep;
-          document.getElementById("phase1-episode-title").textContent = ep.title;
+          document.getElementById("phase1-episode-title").textContent =
+            ep.title;
           return ep;
         } catch (e) {
           toast(`Save failed: ${e.message}`, "error");
@@ -1759,66 +1964,96 @@
         }
       }
 
-      document.getElementById("btn-save-setup").addEventListener("click", async () => {
-        const btn = document.getElementById("btn-save-setup");
-        setLoading(btn, true);
-        const ep = await saveEpisodeSetup();
-        setLoading(btn, false);
-        if (ep) toast("Episode saved.", "success");
-      });
+      document
+        .getElementById("btn-save-setup")
+        .addEventListener("click", async () => {
+          const btn = document.getElementById("btn-save-setup");
+          setLoading(btn, true);
+          const ep = await saveEpisodeSetup();
+          setLoading(btn, false);
+          if (ep) toast("Episode saved.", "success");
+        });
 
       /* ── Generate script ─────────────────────────────────────────────────────── */
-      document.getElementById("btn-generate-script").addEventListener("click", async () => {
-        const btn = document.getElementById("btn-generate-script");
-        setLoading(btn, true);
+      document
+        .getElementById("btn-generate-script")
+        .addEventListener("click", async () => {
+          const btn = document.getElementById("btn-generate-script");
+          setLoading(btn, true);
 
-        const ep = await saveEpisodeSetup();
-        if (!ep) { setLoading(btn, false); return; }
-
-        toast("Generating script with LLM… this may take 30–90 seconds.", "info", 10000);
-
-        try {
-          const r = await fetch(`/api/podcast/episodes/${ep.id}/generate-script`, {
-            method: "POST",
-          });
-          const data = await r.json();
-          if (!r.ok) {
-            toast(data.detail || `LLM error (HTTP ${r.status}).`, "error", 8000);
+          const ep = await saveEpisodeSetup();
+          if (!ep) {
+            setLoading(btn, false);
             return;
           }
-          currentEpisode = data;
-          renderScriptEditor(data.script, data.speakers);
-          document.getElementById("script-editor-card").style.display = "";
-          toast(`Script generated — ${data.script.length} turns. Review and approve!`, "success", 6000);
-        } catch (e) {
-          toast(`Failed: ${e.message}`, "error", 6000);
-        } finally {
-          setLoading(btn, false);
-        }
-      });
 
-      document.getElementById("btn-regenerate-script").addEventListener("click", () => {
-        document.getElementById("btn-generate-script").click();
-      });
+          toast(
+            "Generating script with LLM… this may take 30–90 seconds.",
+            "info",
+            10000,
+          );
+
+          try {
+            const r = await fetch(
+              `/api/podcast/episodes/${ep.id}/generate-script`,
+              {
+                method: "POST",
+              },
+            );
+            const data = await r.json();
+            if (!r.ok) {
+              toast(
+                data.detail || `LLM error (HTTP ${r.status}).`,
+                "error",
+                8000,
+              );
+              return;
+            }
+            currentEpisode = data;
+            renderScriptEditor(data.script, data.speakers);
+            document.getElementById("script-editor-card").style.display = "";
+            toast(
+              `Script generated — ${data.script.length} turns. Review and approve!`,
+              "success",
+              6000,
+            );
+          } catch (e) {
+            toast(`Failed: ${e.message}`, "error", 6000);
+          } finally {
+            setLoading(btn, false);
+          }
+        });
+
+      document
+        .getElementById("btn-regenerate-script")
+        .addEventListener("click", () => {
+          document.getElementById("btn-generate-script").click();
+        });
 
       /* ── Script editor ───────────────────────────────────────────────────────── */
       function renderScriptEditor(script, speakers) {
         const list = document.getElementById("script-turns-list");
         list.innerHTML = "";
+        list.scrollTop = 0;
         script.forEach((turn, i) => addScriptTurnRow(list, turn, i, speakers));
       }
 
       function addScriptTurnRow(list, turn, index, speakers) {
-        const spk = (speakers || [])[turn.speaker_index] || { name: `Speaker ${turn.speaker_index + 1}` };
+        const spk = (speakers || [])[turn.speaker_index] || {
+          name: `Speaker ${turn.speaker_index + 1}`,
+        };
         const cls = SPEAKER_COLORS[turn.speaker_index] || "speaker-0";
         const row = document.createElement("div");
         row.className = "turn-item";
         row.dataset.turnIndex = index;
 
         // Speaker selector options
-        const spkOpts = (speakers || []).map((s, i) =>
-          `<option value="${i}"${i === turn.speaker_index ? " selected" : ""}>${escapeHtml(s.name)}</option>`
-        ).join("");
+        const spkOpts = (speakers || [])
+          .map(
+            (s, i) =>
+              `<option value="${i}"${i === turn.speaker_index ? " selected" : ""}>${escapeHtml(s.name)}</option>`,
+          )
+          .join("");
 
         row.innerHTML = `
           <div class="turn-header">
@@ -1835,7 +2070,9 @@
         const badge = row.querySelector(".turn-speaker-badge");
         sel.addEventListener("change", () => {
           const idx = parseInt(sel.value, 10);
-          const newSpk = (speakers || [])[idx] || { name: `Speaker ${idx + 1}` };
+          const newSpk = (speakers || [])[idx] || {
+            name: `Speaker ${idx + 1}`,
+          };
           badge.textContent = newSpk.name;
           badge.className = `turn-speaker-badge speaker-badge ${SPEAKER_COLORS[idx] || "speaker-0"}`;
           row.dataset.speakerIndex = idx;
@@ -1844,10 +2081,12 @@
         row.querySelector(".turn-del").addEventListener("click", () => {
           row.remove();
           // Re-number remaining rows
-          document.querySelectorAll("#script-turns-list .turn-item").forEach((r, i) => {
-            r.dataset.turnIndex = i;
-            r.querySelector(".turn-num").textContent = i + 1;
-          });
+          document
+            .querySelectorAll("#script-turns-list .turn-item")
+            .forEach((r, i) => {
+              r.dataset.turnIndex = i;
+              r.querySelector(".turn-num").textContent = i + 1;
+            });
         });
 
         list.appendChild(row);
@@ -1870,37 +2109,51 @@
         return Array.from(
           document.querySelectorAll("#script-turns-list .turn-item"),
         ).map((row) => ({
-          speaker_index: parseInt(row.querySelector(".turn-speaker-sel").value, 10),
+          speaker_index: parseInt(
+            row.querySelector(".turn-speaker-sel").value,
+            10,
+          ),
           text: row.querySelector(".turn-text").value.trim(),
           audio_path: null,
         }));
       }
 
       /* ── Approve script → Phase 2 ────────────────────────────────────────────── */
-      document.getElementById("btn-approve-script").addEventListener("click", async () => {
-        const btn = document.getElementById("btn-approve-script");
-        if (!currentEpisode) return;
+      document
+        .getElementById("btn-approve-script")
+        .addEventListener("click", async () => {
+          const btn = document.getElementById("btn-approve-script");
+          if (!currentEpisode) return;
 
-        const script = collectScript().filter((t) => t.text);
-        if (!script.length) { toast("Script is empty.", "error"); return; }
+          const script = collectScript().filter((t) => t.text);
+          if (!script.length) {
+            toast("Script is empty.", "error");
+            return;
+          }
 
-        setLoading(btn, true);
-        try {
-          const r = await fetch(`/api/podcast/episodes/${currentEpisode.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ script, phase: 2 }),
-          });
-          const ep = await r.json();
-          if (!r.ok) { toast(ep.detail || "Save failed.", "error"); return; }
-          currentEpisode = ep;
-          renderPhase2(ep);
-        } catch (e) {
-          toast(`Error: ${e.message}`, "error");
-        } finally {
-          setLoading(btn, false);
-        }
-      });
+          setLoading(btn, true);
+          try {
+            const r = await fetch(
+              `/api/podcast/episodes/${currentEpisode.id}`,
+              {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ script, phase: 2 }),
+              },
+            );
+            const ep = await r.json();
+            if (!r.ok) {
+              toast(ep.detail || "Save failed.", "error");
+              return;
+            }
+            currentEpisode = ep;
+            renderPhase2(ep);
+          } catch (e) {
+            toast(`Error: ${e.message}`, "error");
+          } finally {
+            setLoading(btn, false);
+          }
+        });
 
       /* ── Phase 2: Audio generation ────────────────────────────────────────────── */
       function renderPhase2(ep) {
@@ -1918,7 +2171,9 @@
       }
 
       function buildAudioTurnRow(turn, index, speakers) {
-        const spk = (speakers || [])[turn.speaker_index] || { name: `Speaker ${turn.speaker_index + 1}` };
+        const spk = (speakers || [])[turn.speaker_index] || {
+          name: `Speaker ${turn.speaker_index + 1}`,
+        };
         const cls = SPEAKER_COLORS[turn.speaker_index] || "speaker-0";
         const hasAudio = !!turn.audio_path;
 
@@ -1940,9 +2195,9 @@
           </div>
         `;
 
-        row.querySelector(".btn-gen-clip").addEventListener("click", () =>
-          generateClip(index, row),
-        );
+        row
+          .querySelector(".btn-gen-clip")
+          .addEventListener("click", () => generateClip(index, row));
         return row;
       }
 
@@ -1953,7 +2208,10 @@
 
         // Save any text edits first
         const newText = textEl.value.trim();
-        if (!newText) { toast("Turn text cannot be empty.", "error"); return; }
+        if (!newText) {
+          toast("Turn text cannot be empty.", "error");
+          return;
+        }
 
         if (newText !== (currentEpisode.script[index] || {}).text) {
           const script = currentEpisode.script.map((t, i) =>
@@ -1965,7 +2223,10 @@
             body: JSON.stringify({ script }),
           });
           const ep = await r.json();
-          if (!r.ok) { toast(ep.detail || "Save failed.", "error"); return; }
+          if (!r.ok) {
+            toast(ep.detail || "Save failed.", "error");
+            return;
+          }
           currentEpisode = ep;
         }
 
@@ -1976,7 +2237,10 @@
             { method: "POST" },
           );
           const d = await r.json();
-          if (!r.ok) { toast(d.detail || "Clip generation failed.", "error", 6000); return; }
+          if (!r.ok) {
+            toast(d.detail || "Clip generation failed.", "error", 6000);
+            return;
+          }
 
           // Refresh episode state
           const epR = await fetch(`/api/podcast/episodes/${currentEpisode.id}`);
@@ -1995,7 +2259,9 @@
           toast(`Error: ${e.message}`, "error");
         } finally {
           if (document.getElementById(`audio-turn-${index}`)) {
-            const newBtn = document.querySelector(`#audio-turn-${index} .btn-gen-clip`);
+            const newBtn = document.querySelector(
+              `#audio-turn-${index} .btn-gen-clip`,
+            );
             if (newBtn) setLoading(newBtn, false);
           }
         }
@@ -2007,72 +2273,88 @@
         const done = currentEpisode.script.filter((t) => t.audio_path).length;
         const pct = total ? Math.round((done / total) * 100) : 0;
         document.getElementById("clips-progress-bar").style.width = `${pct}%`;
-        document.getElementById("clips-progress-label").textContent = `${done}/${total} clips`;
+        document.getElementById("clips-progress-label").textContent =
+          `${done}/${total} clips`;
         document.getElementById("btn-finalize").disabled = done < total;
       }
 
       /* ── Generate all clips ──────────────────────────────────────────────────── */
-      document.getElementById("btn-generate-all").addEventListener("click", async () => {
-        if (!currentEpisode || !currentEpisode.script) return;
-        const btn = document.getElementById("btn-generate-all");
-        setLoading(btn, true);
-        try {
-          for (let i = 0; i < currentEpisode.script.length; i++) {
-            const rowEl = document.getElementById(`audio-turn-${i}`);
-            if (rowEl) await generateClip(i, rowEl);
+      document
+        .getElementById("btn-generate-all")
+        .addEventListener("click", async () => {
+          if (!currentEpisode || !currentEpisode.script) return;
+          const btn = document.getElementById("btn-generate-all");
+          setLoading(btn, true);
+          try {
+            for (let i = 0; i < currentEpisode.script.length; i++) {
+              const rowEl = document.getElementById(`audio-turn-${i}`);
+              if (rowEl) await generateClip(i, rowEl);
+            }
+            toast("All clips generated!", "success");
+          } finally {
+            setLoading(btn, false);
           }
-          toast("All clips generated!", "success");
-        } finally {
-          setLoading(btn, false);
-        }
-      });
+        });
 
       /* ── Back to script (Phase 1) ────────────────────────────────────────────── */
-      document.getElementById("btn-back-to-script").addEventListener("click", async () => {
-        if (!currentEpisode) { showPodcastView("list"); return; }
-        // Save current text edits back to script
-        const updatedScript = currentEpisode.script.map((turn, i) => {
-          const row = document.getElementById(`audio-turn-${i}`);
-          if (row) {
-            const text = row.querySelector(".turn-text").value.trim();
-            if (text) return { ...turn, text, audio_path: null };
+      document
+        .getElementById("btn-back-to-script")
+        .addEventListener("click", async () => {
+          if (!currentEpisode) {
+            showPodcastView("list");
+            return;
           }
-          return turn;
-        });
-        try {
-          const r = await fetch(`/api/podcast/episodes/${currentEpisode.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ script: updatedScript, phase: 1 }),
+          // Save current text edits back to script
+          const updatedScript = currentEpisode.script.map((turn, i) => {
+            const row = document.getElementById(`audio-turn-${i}`);
+            if (row) {
+              const text = row.querySelector(".turn-text").value.trim();
+              if (text) return { ...turn, text, audio_path: null };
+            }
+            return turn;
           });
-          const ep = await r.json();
-          currentEpisode = ep;
-          renderPhase1(ep);
-        } catch {
-          renderPhase1(currentEpisode);
-        }
-      });
+          try {
+            const r = await fetch(
+              `/api/podcast/episodes/${currentEpisode.id}`,
+              {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ script: updatedScript, phase: 1 }),
+              },
+            );
+            const ep = await r.json();
+            currentEpisode = ep;
+            renderPhase1(ep);
+          } catch {
+            renderPhase1(currentEpisode);
+          }
+        });
 
       /* ── Finalize episode ────────────────────────────────────────────────────── */
-      document.getElementById("btn-finalize").addEventListener("click", async () => {
-        const btn = document.getElementById("btn-finalize");
-        setLoading(btn, true);
-        try {
-          const r = await fetch(
-            `/api/podcast/episodes/${currentEpisode.id}/finalize`,
-            { method: "POST" },
-          );
-          const d = await r.json();
-          if (!r.ok) { toast(d.detail || "Finalize failed.", "error", 8000); return; }
-          currentEpisode = d.episode;
-          renderPhase3(d.episode);
-          toast("Episode finalized!", "success");
-        } catch (e) {
-          toast(`Error: ${e.message}`, "error");
-        } finally {
-          setLoading(btn, false);
-        }
-      });
+      document
+        .getElementById("btn-finalize")
+        .addEventListener("click", async () => {
+          const btn = document.getElementById("btn-finalize");
+          setLoading(btn, true);
+          try {
+            const r = await fetch(
+              `/api/podcast/episodes/${currentEpisode.id}/finalize`,
+              { method: "POST" },
+            );
+            const d = await r.json();
+            if (!r.ok) {
+              toast(d.detail || "Finalize failed.", "error", 8000);
+              return;
+            }
+            currentEpisode = d.episode;
+            renderPhase3(d.episode);
+            toast("Episode finalized!", "success");
+          } catch (e) {
+            toast(`Error: ${e.message}`, "error");
+          } finally {
+            setLoading(btn, false);
+          }
+        });
 
       /* ── Phase 3: Final episode ──────────────────────────────────────────────── */
       function renderPhase3(ep) {
@@ -2089,44 +2371,53 @@
 
         const txBtn = document.getElementById("btn-download-transcript");
         txBtn.href = `/api/podcast/episodes/${ep.id}/transcript`;
-        txBtn.download = ep.title.replace(/[^\w\s-]/g, "").trim() + "-transcript.txt";
+        txBtn.download =
+          ep.title.replace(/[^\w\s-]/g, "").trim() + "-transcript.txt";
 
         const txEl = document.getElementById("phase3-transcript");
         txEl.textContent = ep.transcript || "";
       }
 
       /* ── Phase 3 → back to audio ────────────────────────────────────────────── */
-      document.getElementById("btn-back-to-audio").addEventListener("click", async () => {
-        if (!currentEpisode) return;
-        const r = await fetch(`/api/podcast/episodes/${currentEpisode.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phase: 2 }),
+      document
+        .getElementById("btn-back-to-audio")
+        .addEventListener("click", async () => {
+          if (!currentEpisode) return;
+          const r = await fetch(`/api/podcast/episodes/${currentEpisode.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phase: 2 }),
+          });
+          const ep = await r.json();
+          currentEpisode = ep;
+          renderPhase2(ep);
         });
-        const ep = await r.json();
-        currentEpisode = ep;
-        renderPhase2(ep);
-      });
 
-      document.getElementById("btn-back-episodes").addEventListener("click", () => {
-        currentEpisode = null;
-        showPodcastView("list");
-        loadPodcastEpisodes();
-      });
+      document
+        .getElementById("btn-back-episodes")
+        .addEventListener("click", () => {
+          currentEpisode = null;
+          showPodcastView("list");
+          loadPodcastEpisodes();
+        });
 
       /* ── New Episode button ──────────────────────────────────────────────────── */
-      document.getElementById("btn-new-episode").addEventListener("click", async () => {
-        currentEpisode = null;
-        await loadPodcastVoices();
-        renderPhase1(null);
-      });
+      document
+        .getElementById("btn-new-episode")
+        .addEventListener("click", async () => {
+          currentEpisode = null;
+          await loadPodcastVoices();
+          renderPhase1(null);
+        });
 
       /* ── Back to list buttons ────────────────────────────────────────────────── */
-      document.getElementById("btn-back-to-list").addEventListener("click", () => {
-        currentEpisode = null;
-        showPodcastView("list");
-        loadPodcastEpisodes();
-      });
+      document
+        .getElementById("btn-back-to-list")
+        .addEventListener("click", () => {
+          currentEpisode = null;
+          showPodcastView("list");
+          loadPodcastEpisodes();
+        });
 
       /* ── Tab activation ──────────────────────────────────────────────────────── */
       // Wire into existing tab routing (added at bottom of the handler below)

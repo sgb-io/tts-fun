@@ -1,0 +1,48 @@
+.container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 8px;
+  z-index: 9999;
+}
+
+.toast {
+  padding: 12px 18px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  max-width: 320px;
+  animation: slideIn 0.25s ease;
+  box-shadow: var(--shadow);
+}
+
+.success {
+  background: rgba(62, 207, 142, 0.15);
+  border: 1px solid var(--success);
+  color: var(--success);
+}
+
+.error {
+  background: rgba(242, 96, 96, 0.15);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+}
+
+.info {
+  background: rgba(108, 99, 255, 0.15);
+  border: 1px solid var(--accent);
+  color: var(--accent-h);
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

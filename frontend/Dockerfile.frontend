@@ -1,0 +1,51 @@
+# Dockerfile.frontend — TTS Fun Next.js UI
+#
+# The production Next.js build is baked into the image at build time.
+# At runtime, NEXT_MODE=dev overrides to hot-reload mode (mount ./frontend/src
+# as a volume for live edits).
+
+FROM node:24-alpine AS base
+WORKDIR /app
+
+# ── Install dependencies ──────────────────────────────────────────────────────
+FROM base AS deps
+COPY package.json package-lock.json* ./
+# Use --legacy-peer-deps in case peer dep resolution differs between minor versions
+RUN npm install
+
+# ── Build ─────────────────────────────────────────────────────────────────────
+FROM deps AS builder
+COPY . .
+# Next.js bakes rewrite destinations (from next.config.ts) into the routes
+# manifest at build time. Pass API_URL as a build arg so the correct backend
+# URL is embedded — docker-compose supplies it via build.args.
+ARG API_URL=http://localhost:8000
+ENV API_URL=${API_URL}
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN npm run build
+
+# ── Runtime image ─────────────────────────────────────────────────────────────
+FROM base AS runner
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_MODE=production
+
+# Copy everything needed to run the app
+COPY --from=deps   /app/node_modules ./node_modules
+COPY --from=builder /app/.next        ./.next
+COPY --from=builder /app/public       ./public
+COPY package.json ./
+
+# Also copy source so `npm run dev` works when NEXT_MODE=dev
+COPY --from=builder /app/src ./src
+COPY next.config.ts tsconfig.json ./
+
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=15s --retries=3 \
+    CMD wget -qO- http://localhost:3000/ || exit 1
+
+ENTRYPOINT ["/docker-entrypoint.sh"]

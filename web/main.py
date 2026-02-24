@@ -32,16 +32,13 @@ from fastapi import (
     File,
     Form,
     HTTPException,
-    Request,
     UploadFile,
 )
 from fastapi.responses import (
-    HTMLResponse,
     JSONResponse,
     Response,
     StreamingResponse,
 )
-from fastapi.staticfiles import StaticFiles
 
 log = logging.getLogger("tts-fun")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
@@ -61,13 +58,6 @@ PODCAST_DATA_DIR = Path(os.environ.get("PODCAST_DATA_DIR", "/app/podcast_data"))
 
 app = FastAPI(title="TTS Fun", version="0.1.0")
 
-# Serve static assets (the SPA)
-app.mount(
-    "/static",
-    StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")),
-    name="static",
-)
-
 
 # ---------------------------------------------------------------------------
 # Health
@@ -77,18 +67,6 @@ app.mount(
 @app.get("/health")
 async def health() -> dict:
     return {"status": "ok"}
-
-
-# ---------------------------------------------------------------------------
-# Root – serve the SPA
-# ---------------------------------------------------------------------------
-
-
-@app.get("/", response_class=HTMLResponse)
-async def root(request: Request) -> HTMLResponse:
-    index_path = os.path.join(os.path.dirname(__file__), "static", "index.html")
-    with open(index_path, encoding="utf-8") as f:
-        return HTMLResponse(content=f.read())
 
 
 # ---------------------------------------------------------------------------
@@ -559,8 +537,11 @@ async def generate_podcast_script(episode_id: str) -> JSONResponse:
         f"  Speaker {i} – {s['name']}: {s['bio']}"
         for i, s in enumerate(speakers)
     )
-    target_turns = max(6, ep["length_minutes"] * 2)
+    # ~130 wpm, ~50 words/turn on average → ~2.6 turns/min; use 3 to be safe
+    target_turns = max(10, ep["length_minutes"] * 3)
     target_words = ep["length_minutes"] * 130
+    # Rough upper bound on tokens needed: words * 1.4 + JSON overhead
+    num_predict = max(4096, int(target_words * 1.6) + 512)
 
     system_msg = (
         "You are a podcast script writer. "
@@ -568,10 +549,11 @@ async def generate_podcast_script(episode_id: str) -> JSONResponse:
     )
     user_msg = (
         f"Create a {ep['length_minutes']}-minute podcast script "
-        f"(~{target_words} words total, ~{target_turns} turns).\n\n"
+        f"(~{target_words} words total, MINIMUM {target_turns} turns).\n\n"
         f"Speakers:\n{speaker_desc}\n\n"
         f"Topic/prompt: {ep['prompt']}\n\n"
         "Rules:\n"
+        f"• You MUST produce at least {target_turns} turns — do not stop early\n"
         "• Natural conversation with varied turn lengths (15–150 words each)\n"
         "• Not equally distributed — let it flow like a real podcast\n"
         "• Include reactions, follow-ups, and relevant tangents\n"
@@ -582,7 +564,7 @@ async def generate_podcast_script(episode_id: str) -> JSONResponse:
     user_msg += f"Speaker indices: {speaker_index_legend}"
 
     try:
-        async with httpx.AsyncClient(timeout=180.0) as client:
+        async with httpx.AsyncClient(timeout=300.0) as client:
             resp = await client.post(
                 f"{LLM_URL}/api/chat",
                 json={
@@ -593,6 +575,10 @@ async def generate_podcast_script(episode_id: str) -> JSONResponse:
                     ],
                     "stream": False,
                     "format": "json",
+                    "options": {
+                        "num_predict": num_predict,
+                        "num_ctx": max(4096, num_predict + 1024),
+                    },
                 },
             )
     except httpx.ConnectError:
@@ -630,6 +616,12 @@ async def generate_podcast_script(episode_id: str) -> JSONResponse:
     ]
     if not script:
         raise HTTPException(status_code=502, detail="LLM generated an empty script")
+
+    total_words = sum(len(t["text"].split()) for t in script)
+    log.info(
+        "Script generated: %d turns, ~%d words (target: %d turns, %d words, num_predict=%d)",
+        len(script), total_words, target_turns, target_words, num_predict,
+    )
 
     ep["script"] = script
     _save_episode(ep)

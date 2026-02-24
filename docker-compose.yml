@@ -93,8 +93,10 @@ services:
       retries: 10
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # TTS Fun web UI
+  # TTS Fun FastAPI backend  (API only – UI served by Next.js frontend)
   # ─────────────────────────────────────────────────────────────────────────────
+  # FastAPI backend – serves all /api/* routes on internal port 8000.
+  # The Next.js frontend proxies requests to it; never exposed to the host directly.
   web:
     build:
       context: .
@@ -106,8 +108,8 @@ services:
       api:
         condition: service_healthy
 
-    ports:
-      - "${WEB_PORT:-3000}:3000"
+    expose:
+      - "8000"
 
     environment:
       # The web app talks to the API server via the internal network
@@ -121,11 +123,46 @@ services:
       - ./podcast_data:/app/podcast_data
 
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:3000/health"]
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/health"]
       interval: 15s
       timeout: 5s
       start_period: 10s
       retries: 3
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Next.js frontend
+  # Set NEXT_MODE=dev in .env (or environment) for hot-reload mode.
+  # For dev hot-reload, also mount: ./frontend/src:/app/src
+  # ─────────────────────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
+      args:
+        # Baked into the Next.js routes manifest at build time
+        API_URL: "http://web:8000"
+    image: tts-fun-frontend:latest
+    container_name: tts-fun-frontend
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+
+    environment:
+      # Server-side URL used by Next.js rewrites to forward /api/* to FastAPI
+      API_URL: "http://web:8000"
+      # Set to "dev" to run `npm run dev` instead of `npm start`
+      NEXT_MODE: "${NEXT_MODE:-production}"
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
 
 volumes:
   # Persists downloaded Ollama models across container restarts

@@ -1,0 +1,31 @@
+.header {
+  width: 100%;
+  padding: 18px 32px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.logo {
+  font-size: 1.5rem;
+}
+
+.title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.sub {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-left: auto;
+}
+
+@media (max-width: 600px) {
+  .header {
+    padding: 14px 16px;
+  }
+}
