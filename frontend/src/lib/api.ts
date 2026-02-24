@@ -51,9 +51,7 @@ export async function addVoice(
   return d;
 }
 
-export async function youtubeClone(
-  url: string,
-): Promise<{
+export async function youtubeClone(url: string): Promise<{
   success: boolean;
   id?: string;
   detail?: string;
@@ -73,6 +71,14 @@ export async function generateTts(formData: FormData): Promise<Blob> {
   if (!res.ok)
     throw new Error(await res.text().catch(() => `HTTP ${res.status}`));
   return res.blob();
+}
+
+export async function chunkText(text: string): Promise<{ chunks: string[] }> {
+  return apiFetch("/api/tts/chunk-text", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
 }
 
 // ── Podcast episodes ───────────────────────────────────────────────────────

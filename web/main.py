@@ -134,6 +134,82 @@ async def generate_tts(
 
 
 # ---------------------------------------------------------------------------
+# Auto-chunking (LLM splits large text into TTS-ready segments)
+# ---------------------------------------------------------------------------
+
+
+class ChunkTextRequest(BaseModel):
+    text: str
+
+
+@app.post("/api/tts/chunk-text")
+async def chunk_text_with_llm(req: ChunkTextRequest) -> JSONResponse:
+    """Use the local LLM to split a large block of text into natural, TTS-friendly chunks."""
+    if not req.text.strip():
+        raise HTTPException(status_code=400, detail="text is required")
+
+    system_msg = (
+        "You are a text processing assistant. "
+        "Respond with valid JSON only — no markdown, no extra text."
+    )
+    user_msg = (
+        "Split the following text into natural, TTS-friendly chunks. "
+        "Each chunk should be 1–4 sentences and end at a natural speech boundary "
+        "(end of a sentence or paragraph). "
+        "Preserve every word of the original text exactly — do not paraphrase, "
+        "summarise, or add anything. "
+        "The concatenation of all chunks must equal the original text.\n\n"
+        f"Text:\n{req.text}\n\n"
+        'Return JSON: {"chunks": ["chunk 1 text", "chunk 2 text", ...]}'
+    )
+
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post(
+                f"{LLM_URL}/api/chat",
+                json={
+                    "model": LLM_MODEL,
+                    "messages": [
+                        {"role": "system", "content": system_msg},
+                        {"role": "user", "content": user_msg},
+                    ],
+                    "stream": False,
+                    "format": "json",
+                    "options": {
+                        "num_predict": 4096,
+                        "num_ctx": 8192,
+                    },
+                },
+            )
+    except httpx.ConnectError:
+        raise HTTPException(
+            status_code=503,
+            detail="LLM service is not reachable. Ensure the LLM container is running.",
+        )
+
+    if resp.status_code != 200:
+        raise HTTPException(
+            status_code=502,
+            detail=f"LLM returned {resp.status_code}: {resp.text[:300]}",
+        )
+
+    content = resp.json().get("message", {}).get("content", "")
+    try:
+        parsed = json.loads(content)
+    except json.JSONDecodeError:
+        log.error("chunk_text LLM returned invalid JSON: %s", content[:500])
+        raise HTTPException(status_code=502, detail="LLM returned invalid JSON")
+
+    chunks = parsed.get("chunks", []) if isinstance(parsed, dict) else []
+    if not isinstance(chunks, list) or not chunks:
+        raise HTTPException(status_code=502, detail="LLM returned no chunks")
+
+    cleaned = [str(c).strip() for c in chunks if str(c).strip()]
+    log.info("chunk_text: split into %d chunks", len(cleaned))
+    return JSONResponse(content={"chunks": cleaned})
+
+
+# ---------------------------------------------------------------------------
 # Voice cloning – upload reference audio
 # ---------------------------------------------------------------------------
 

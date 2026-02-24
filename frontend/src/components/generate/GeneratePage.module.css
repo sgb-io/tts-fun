@@ -24,3 +24,77 @@
   height: 16px;
   flex-shrink: 0;
 }
+
+/* ── Chunk list ──────────────────────────────────────────────────────────── */
+
+.chunkCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.chunkCardHeader h2 {
+  margin: 0;
+}
+
+.chunkHint {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+
+.chunkList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chunkItem {
+  border: 1px solid var(--border, #333);
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--surface2, rgba(255, 255, 255, 0.03));
+}
+
+.chunkItemHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.chunkBadge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 4px;
+  padding: 2px 8px;
+  flex-shrink: 0;
+}
+
+.chunkTextarea {
+  width: 100%;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.chunkAudio {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.chunkAudio audio {
+  flex: 1 1 260px;
+  min-width: 0;
+}

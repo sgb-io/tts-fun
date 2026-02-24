@@ -26,3 +26,8 @@ web/.venv/
 Thumbs.db
 
 hf_access_token.txt
+
+# we only have local node_modules for IDE features
+frontend/node_modules
+# we only have a local copy for IDE features
+frontend/package-lock.json
