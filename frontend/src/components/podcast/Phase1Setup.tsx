@@ -150,19 +150,26 @@ export function Phase1Setup({ episode, onEpisodeUpdate, onApprove }: Props) {
       setGenerating(false);
       return;
     }
+    const estimatedSecs = Math.max(30, ep.length_minutes * 15);
     toast(
-      "Generating script with LLM… this may take 30–90 seconds.",
+      `Generating script with LLM… this may take up to ${estimatedSecs} seconds for a ${ep.length_minutes}-minute episode.`,
       "info",
-      10000,
+      Math.max(15000, estimatedSecs * 1000),
     );
     try {
       const updated = await generateScript(ep.id);
       onEpisodeUpdate(updated);
       setScriptAndReset(updated.script ?? []);
+      const turnCount = (updated.script ?? []).length;
+      const targetTurns = Math.max(10, ep.length_minutes * 3);
+      const turnWarning =
+        turnCount < Math.max(3, Math.floor(targetTurns / 2))
+          ? ` (only ${turnCount} turns — consider regenerating)`
+          : "";
       toast(
-        `Script generated — ${(updated.script ?? []).length} turns. Review and approve!`,
-        "success",
-        6000,
+        `Script generated — ${turnCount} turns.${turnWarning} Review and approve!`,
+        turnWarning ? "error" : "success",
+        8000,
       );
     } catch (e: unknown) {
       toast(

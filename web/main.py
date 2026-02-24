@@ -603,58 +603,126 @@ async def delete_podcast_episode(episode_id: str) -> JSONResponse:
 
 # ── Script generation (LLM) ───────────────────────────────────────────────────
 
+def _parse_script_lines(raw: str, speakers: list[dict]) -> list[dict]:
+    """
+    Convert a numbered plain-text script into structured turn dicts.
+
+    Expected line format (produced by pass-1):
+        1. [SpeakerName] dialogue text here
+        2. [SpeakerName] response text here
+
+    The speaker name is matched case-insensitively against the speakers list;
+    unknown names fall back to speaker 0.
+    """
+    name_to_index = {s["name"].lower(): i for i, s in enumerate(speakers)}
+    turns: list[dict] = []
+
+    for line in raw.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        # Strip leading number + dot/paren: "1." "1)" "1:"
+        line = re.sub(r"^\d+[.):\s]+", "", line).strip()
+        if not line:
+            continue
+        # Extract [SpeakerName] tag
+        m = re.match(r"^\[([^\]]+)\]\s*(.+)$", line, re.DOTALL)
+        if m:
+            speaker_name = m.group(1).strip().lower()
+            text = m.group(2).strip()
+        else:
+            # No tag — assign to the speaker that alternates from the last
+            speaker_name = ""
+            text = line
+
+        if not text:
+            continue
+
+        if speaker_name:
+            idx = name_to_index.get(speaker_name, 0)
+        else:
+            # Alternate from the previous turn's speaker
+            prev = turns[-1]["speaker_index"] if turns else -1
+            idx = (prev + 1) % len(speakers)
+
+        turns.append({"speaker_index": idx, "text": text, "audio_path": None})
+
+    return turns
+
+
 @app.post("/api/podcast/episodes/{episode_id}/generate-script")
 async def generate_podcast_script(episode_id: str) -> JSONResponse:
-    """Call the local LLM to generate a podcast script for the episode."""
+    """
+    Two-pass script generation:
+
+    Pass 1 — plain-text numbered list
+      The model writes the full conversation as a numbered list with tagged
+      speaker names.  Plain prose is far easier for the LLM to count/order
+      correctly than a large JSON array.
+
+    Pass 2 — JSON conversion (only if pass-1 plain-text parse fails)
+      If the numbered-list output can't be parsed (e.g. the model wrapped
+      everything in JSON anyway), we fall back to the old single-pass JSON
+      approach using the pass-1 response as context.
+    """
     ep = _load_episode(episode_id)
     speakers = ep["speakers"]
 
     speaker_desc = "\n".join(
-        f"  Speaker {i} – {s['name']}: {s['bio']}"
+        f"  {i}. {s['name']} — {s['bio']}"
         for i, s in enumerate(speakers)
     )
-    # ~130 wpm, ~50 words/turn on average → ~2.6 turns/min; use 3 to be safe
     target_turns = max(10, ep["length_minutes"] * 3)
     target_words = ep["length_minutes"] * 130
-    # Rough upper bound on tokens needed: words * 1.4 + JSON overhead
-    num_predict = max(4096, int(target_words * 1.6) + 512)
+    # ~80 tokens per plain-text line is generous but avoids truncation.
+    num_predict_pass1 = max(4096, target_turns * 80 + 256)
 
-    system_msg = (
+    # Speaker name tags used in the numbered list, e.g. [Alice], [Bob]
+    tag_examples = " / ".join(f"[{s['name']}]" for s in speakers)
+
+    # ── Pass 1: numbered plain-text list ─────────────────────────────────────
+    system_pass1 = (
         "You are a podcast script writer. "
-        "Respond with valid JSON only — no markdown, no extra text."
+        "Write ONLY the numbered script lines — no preamble, no summary, "
+        "no JSON, no markdown."
     )
-    user_msg = (
-        f"Create a {ep['length_minutes']}-minute podcast script "
-        f"(~{target_words} words total, MINIMUM {target_turns} turns).\n\n"
+    # Show a short concrete example at the very start so the model locks onto
+    # the format immediately, before it sees the topic (recency bias helps here
+    # because we end the prompt with the instruction to begin writing).
+    ex0 = speakers[0]["name"] if speakers else "Alice"
+    ex1 = speakers[1]["name"] if len(speakers) > 1 else speakers[0]["name"]
+    user_pass1 = (
+        f"Write a podcast conversation script for a {ep['length_minutes']}-minute episode.\n\n"
         f"Speakers:\n{speaker_desc}\n\n"
-        f"Topic/prompt: {ep['prompt']}\n\n"
-        "Rules:\n"
-        f"• You MUST produce at least {target_turns} turns — do not stop early\n"
-        "• Natural conversation with varied turn lengths (15–150 words each)\n"
-        "• Not equally distributed — let it flow like a real podcast\n"
-        "• Include reactions, follow-ups, and relevant tangents\n"
-        "• Plain spoken words only — no stage directions or markdown\n\n"
-        f"Return JSON: {{\"turns\": [{{\"speaker\": 0, \"text\": \"...\"}}, ...]}}\n"
+        f"Topic: {ep['prompt']}\n\n"
+        f"FORMAT — each line must look exactly like this:\n"
+        f"1. [{ex0}] Welcome to the show! Today we are talking about ...\n"
+        f"2. [{ex1}] Thanks for having me. I think the most important thing is ...\n"
+        f"3. [{ex0}] That makes sense. Can you expand on ...\n"
+        f"...\n\n"
+        f"RULES:\n"
+        f"• Write exactly {target_turns} numbered lines — no more, no fewer\n"
+        f"• Every line starts with its number, then [{tag_examples}], then the spoken words\n"
+        f"• Each line is one uninterrupted speech turn: 20–80 words\n"
+        f"• Write straight through in order — do NOT skip turns or jump ahead\n"
+        f"• Speakers react directly to what was just said in the previous line\n"
+        f"• No stage directions, no asterisks, no parenthetical notes\n\n"
+        f"Begin with line 1 now:"
     )
-    speaker_index_legend = ", ".join(f"{i}={s['name']}" for i, s in enumerate(speakers))
-    user_msg += f"Speaker indices: {speaker_index_legend}"
 
     try:
         async with httpx.AsyncClient(timeout=300.0) as client:
-            resp = await client.post(
+            resp1 = await client.post(
                 f"{LLM_URL}/api/chat",
                 json={
                     "model": LLM_MODEL,
                     "messages": [
-                        {"role": "system", "content": system_msg},
-                        {"role": "user", "content": user_msg},
+                        {"role": "system", "content": system_pass1},
+                        {"role": "user", "content": user_pass1},
                     ],
                     "stream": False,
-                    "format": "json",
-                    "options": {
-                        "num_predict": num_predict,
-                        "num_ctx": max(4096, num_predict + 1024),
-                    },
+                    "options": {"num_predict": num_predict_pass1},
+                    # No format:json here — we explicitly want free prose
                 },
             )
     except httpx.ConnectError:
@@ -662,42 +730,132 @@ async def generate_podcast_script(episode_id: str) -> JSONResponse:
             status_code=503,
             detail="LLM service is not reachable. Ensure the LLM container is running.",
         )
-
-    if resp.status_code != 200:
+    except httpx.ReadTimeout:
         raise HTTPException(
-            status_code=502,
-            detail=f"LLM returned {resp.status_code}: {resp.text[:300]}",
+            status_code=504,
+            detail=(
+                "LLM timed out generating the script. "
+                "Try a shorter episode length or a simpler prompt."
+            ),
         )
 
-    content = resp.json().get("message", {}).get("content", "")
-    try:
-        parsed = json.loads(content)
-    except json.JSONDecodeError:
-        log.error("LLM returned invalid JSON: %s", content[:500])
-        raise HTTPException(status_code=502, detail="LLM returned invalid JSON")
+    if resp1.status_code != 200:
+        raise HTTPException(
+            status_code=502,
+            detail=f"LLM returned {resp1.status_code}: {resp1.text[:300]}",
+        )
 
-    raw_turns = parsed.get("turns", parsed) if isinstance(parsed, dict) else parsed
-    if not isinstance(raw_turns, list):
-        raise HTTPException(status_code=502, detail="Unexpected LLM response structure")
+    data1 = resp1.json()
+    raw_text = data1.get("message", {}).get("content", "")
+    stop_reason = data1.get("done_reason", "unknown")
 
-    script = [
-        {
-            # LLM uses "speaker" (0-based index); we store as "speaker_index"
-            "speaker_index": max(0, min(int(t.get("speaker", 0)), len(speakers) - 1)),
-            "text": str(t.get("text", "")).strip(),
-            "audio_path": None,
-        }
-        for t in raw_turns
-        if str(t.get("text", "")).strip()
-    ]
+    if stop_reason == "length":
+        log.warning(
+            "Pass-1 LLM hit the num_predict limit (%d tokens) — output may be "
+            "truncated. Episode may have fewer turns than requested.",
+            num_predict_pass1,
+        )
+
+    log.info(
+        "Pass-1 raw: stop_reason=%s, %d chars, preview=%r",
+        stop_reason, len(raw_text), raw_text[:150],
+    )
+
+    # ── Parse the numbered list ───────────────────────────────────────────────
+    script = _parse_script_lines(raw_text, speakers)
+
+    # ── Pass 2 fallback: ask the LLM to convert its own output to JSON ────────
+    # This fires only when pass-1 produced nothing parseable (e.g. the model
+    # emitted JSON anyway, or used a completely different format).
+    if len(script) < 3:
+        log.warning(
+            "Pass-1 parse yielded only %d turns; running pass-2 JSON conversion.",
+            len(script),
+        )
+        num_predict_pass2 = max(4096, target_turns * 120 + 512)
+        system_pass2 = (
+            "You are a data formatter. "
+            "Convert the provided podcast script into valid JSON. "
+            "Output JSON only — no markdown, no extra text."
+        )
+        speaker_legend = ", ".join(
+            f'"{s["name"]}" = speaker index {i}' for i, s in enumerate(speakers)
+        )
+        user_pass2 = (
+            f"Convert this podcast script into JSON.\n\n"
+            f"Speaker index mapping: {speaker_legend}\n\n"
+            f"Script:\n{raw_text}\n\n"
+            f'Output format: {{"turns": [{{"speaker": <index>, "text": "<words>"}},'
+            f' {{"speaker": <index>, "text": "<words>"}}, ...]}}\n\n'
+            f"Output the JSON now:"
+        )
+        try:
+            async with httpx.AsyncClient(timeout=300.0) as client:
+                resp2 = await client.post(
+                    f"{LLM_URL}/api/chat",
+                    json={
+                        "model": LLM_MODEL,
+                        "messages": [
+                            {"role": "system", "content": system_pass2},
+                            {"role": "user", "content": user_pass2},
+                        ],
+                        "stream": False,
+                        "format": "json",
+                        "options": {"num_predict": num_predict_pass2},
+                    },
+                )
+        except (httpx.ConnectError, httpx.ReadTimeout) as exc:
+            raise HTTPException(status_code=503, detail=f"LLM pass-2 failed: {exc}")
+
+        if resp2.status_code == 200:
+            content2 = resp2.json().get("message", {}).get("content", "")
+            raw_turns: list | None = None
+            try:
+                parsed2 = json.loads(content2)
+                candidate = parsed2.get("turns", parsed2) if isinstance(parsed2, dict) else parsed2
+                if isinstance(candidate, list):
+                    raw_turns = candidate
+            except json.JSONDecodeError:
+                # Partial-recovery: salvage up to the last complete JSON object
+                m = re.search(r'"turns"\s*:\s*(\[)', content2)
+                if m:
+                    partial = content2[m.start(1):]
+                    last_brace = partial.rfind("}")
+                    if last_brace != -1:
+                        try:
+                            raw_turns = json.loads(partial[: last_brace + 1] + "]")
+                        except json.JSONDecodeError:
+                            pass
+
+            if raw_turns:
+                script = [
+                    {
+                        "speaker_index": max(0, min(int(t.get("speaker", 0)), len(speakers) - 1)),
+                        "text": str(t.get("text", "")).strip(),
+                        "audio_path": None,
+                    }
+                    for t in raw_turns
+                    if isinstance(t, dict) and str(t.get("text", "")).strip()
+                ]
+                log.info("Pass-2 recovered %d turns from JSON", len(script))
+
     if not script:
-        raise HTTPException(status_code=502, detail="LLM generated an empty script")
+        log.error("Both passes failed. Pass-1 raw output: %s", raw_text[:500])
+        raise HTTPException(
+            status_code=502,
+            detail="LLM failed to produce a usable script. Check server logs.",
+        )
 
     total_words = sum(len(t["text"].split()) for t in script)
     log.info(
-        "Script generated: %d turns, ~%d words (target: %d turns, %d words, num_predict=%d)",
-        len(script), total_words, target_turns, target_words, num_predict,
+        "Script finalised: %d turns, ~%d words (target: %d turns, %d words)",
+        len(script), total_words, target_turns, target_words,
     )
+    if len(script) < max(3, target_turns // 2):
+        log.warning(
+            "Only %d/%d expected turns generated — consider regenerating.",
+            len(script), target_turns,
+        )
 
     ep["script"] = script
     _save_episode(ep)
