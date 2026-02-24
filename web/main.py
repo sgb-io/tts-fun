@@ -202,7 +202,8 @@ async def delete_reference(reference_id: str) -> JSONResponse:
     """Delete a saved reference voice."""
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.delete(
+            resp = await client.request(
+                "DELETE",
                 f"{FISH_API_URL}/v1/references/delete",
                 content=ormsgpack.packb({"reference_id": reference_id}),
                 headers={
