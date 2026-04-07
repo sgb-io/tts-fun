@@ -1,7 +1,7 @@
 # 🎙️ TTS Fun
 
-> A self-hosted, fully containerised Text-to-Speech web app powered by
-> **[FishAudio-S1-mini](https://huggingface.co/fishaudio/openaudio-s1-mini)** — an open-source 0.5B TTS model with emotion control and voice cloning.
+> Create expressive speech, clone voices, and produce multi-speaker podcast episodes — entirely on your own hardware.
+> Powered by **[FishAudio S1-mini](https://huggingface.co/fishaudio/openaudio-s1-mini)** (open-source 0.5B TTS) and **[Ollama](https://ollama.com)** for LLM-generated scripts, running in Docker with no cloud dependency.
 
 ---
 
@@ -160,36 +160,6 @@ The **Podcast** tab provides a multi-step workflow for generating a full multi-s
 4. **Finalise** — all clips are concatenated (with short silence gaps) by ffmpeg into a single WAV file. Download the final audio and/or the plain-text transcript from the episode page.
 
 > The LLM service (`tts-fun-llm`) downloads and caches the model on its first start — expect a longer first-run time (~4.7 GB for `qwen2.5:7b`). Subsequent starts are instant thanks to the `ollama_data` Docker volume.
-
----
-
-## Architecture
-
-```
-Host
-├── checkpoints/          ← model weights (mounted read-only into api container)
-├── references/           ← saved voice clips (mounted read-write)
-├── podcast_data/         ← episode JSON, per-turn WAV clips, final audio (mounted read-write)
-│
-Docker Compose
-├── tts-fun-llm           ← Ollama LLM server       (port 11434, internal only)
-│   Dockerfile.llm          ollama/ollama:latest
-│                           Pulls LLM_MODEL on first start, caches in ollama_data volume
-│                           Used by web for podcast script generation
-│
-├── tts-fun-api           ← fish-speech API server  (port 8080, internal only)
-│   Dockerfile.api          Clones fishaudio/fish-speech main
-│                           uv sync + torch cu128 (or cpu)
-│                           Starts: uv run tools/api_server.py
-│
-└── tts-fun-web           ← TTS Fun web UI          (port 3000, exposed)
-    Dockerfile.web          FastAPI + uvicorn + static HTML/JS
-                            Proxies /api/* → fish-speech API
-                            Proxies /api/podcast/* + /api/llm/* → Ollama LLM
-
-Volumes
-└── ollama_data           ← Ollama model cache (persists across container restarts)
-```
 
 ---
 
