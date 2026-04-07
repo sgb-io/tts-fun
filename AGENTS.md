@@ -9,15 +9,19 @@ AI agent working in this repository.
 
 **TTS Fun** is a self-hosted, fully containerised Text-to-Speech web application
 built on top of [FishAudio-S1-mini](https://huggingface.co/fishaudio/openaudio-s1-mini)
-(a 0.5B open-source TTS model). It has two runtime components:
+(a 0.5B open-source TTS model). It has four runtime components:
 
-| Container     | Source           | Purpose                                       |
-| ------------- | ---------------- | --------------------------------------------- |
-| `tts-fun-api` | `Dockerfile.api` | Runs the upstream fish-speech HTTP API server |
-| `tts-fun-web` | `Dockerfile.web` | Custom FastAPI web UI that wraps the API      |
+| Container          | Source                        | Purpose                                          |
+| ------------------ | ----------------------------- | ------------------------------------------------ |
+| `tts-fun-llm`      | `Dockerfile.llm`              | Ollama LLM server for podcast script generation  |
+| `tts-fun-api`      | `Dockerfile.api`              | Runs the upstream fish-speech HTTP API server    |
+| `tts-fun-web`      | `Dockerfile.web`              | FastAPI backend that wraps the API and LLM       |
+| `tts-fun-frontend` | `frontend/Dockerfile.frontend`| Next.js frontend served to the browser           |
 
-The user interacts only with the web UI (port 3000). The API server (port 8080)
-is internal to the Docker network.
+The user interacts with the Next.js frontend (port 3000), which proxies `/api/*`
+requests to the FastAPI backend (port 8000). The backend in turn talks to the
+fish-speech API (port 8080) and the Ollama LLM (port 11434), both internal to
+the Docker network.
 
 ---
 
@@ -25,19 +29,23 @@ is internal to the Docker network.
 
 ```
 tts-fun/
-├── Dockerfile.api          # fish-speech API server image (clones v1.5.1, uv sync)
-├── Dockerfile.web          # TTS Fun web UI image (FastAPI + uvicorn)
-├── docker-compose.yml      # Orchestrates both containers
-├── .env.example            # Template for .env (BACKEND, CUDA_VER, COMPILE, etc.)
+├── Dockerfile.api          # fish-speech API server image
+├── Dockerfile.llm          # Ollama LLM server image
+├── Dockerfile.web          # FastAPI backend image
+├── docker-compose.yml      # Orchestrates all four containers
+├── .env.example            # Template for .env (BACKEND, CUDA_VER, LLM_MODEL, etc.)
 ├── download_model.ps1      # Windows: download model weights via Docker/uv
 ├── download_model.sh       # Linux/macOS: same
 ├── tools/
 │   └── download_model.py   # Python script used by both download scripts
+├── frontend/               # Next.js UI (TypeScript, served on port 3000)
+│   ├── Dockerfile.frontend
+│   └── src/
 ├── web/
 │   ├── main.py             # FastAPI application (all routes)
 │   ├── pyproject.toml      # Python dependencies (managed by uv)
-│   └── static/
-│       └── index.html      # Single-page UI (vanilla JS, no build step)
+│   └── static/             # Legacy static assets
+├── podcast_data/           # Podcast episode data mount point (gitignored)
 ├── checkpoints/            # Model weights mount point (gitignored, not in image)
 └── references/             # Voice clone clips mount point (gitignored)
 ```
@@ -65,22 +73,24 @@ not add instructions or scripts that require host Python.
 
 - `Dockerfile.api` clones [fishaudio/fish-speech](https://github.com/fishaudio/fish-speech)
   at **main** rather than a pinned tag, because the openaudio-s1-mini model weights
-  require fields (e.g. `attention_o_bias`) added after the v1.5.1 release. To pin to a
-  specific release once a compatible tag ships, change the clone command in `Dockerfile.api`.
-- `Dockerfile.web` uses `python:3.12-slim` with uv installed from
-  `ghcr.io/astral-sh/uv:0.8.15`. It does **not** clone any external repo —
-  only the files in `web/` are copied in.
+  require fields added after the v1.5.1 release.
+- `Dockerfile.web` uses `python:3.12-slim` with uv. It does **not** clone any
+  external repo — only the files in `web/` are copied in.
+- `Dockerfile.llm` wraps the official Ollama image; the configured model is pulled
+  on first start and cached in the `ollama_data` volume.
+- `frontend/Dockerfile.frontend` builds the Next.js app. Set `NEXT_MODE=dev` in
+  `.env` for hot-reload development mode.
 - GPU support is handled via the `deploy.resources.reservations` block in
   `docker-compose.yml`. CPU-only mode is selected with `BACKEND=cpu`.
 
 ### Frontend
 
-- The UI is a **single HTML file** (`web/static/index.html`) with vanilla JS and
-  inline CSS — no framework, no build step, no bundler.
-- All API calls from the browser go to `/api/*` on the web container (FastAPI),
-  which proxies to the fish-speech API over the internal Docker network.
-- Keep the frontend self-contained in `index.html`. Only add a build step if
-  complexity genuinely demands it.
+- The UI is a **Next.js application** (`frontend/`) — TypeScript, React, no custom
+  build config beyond `next.config.ts`.
+- All API calls from the browser hit `/api/*` on the Next.js container, which
+  rewrites them to the FastAPI backend (`web/`) over the internal Docker network.
+- For development with hot-reload, set `NEXT_MODE=dev` in `.env` and optionally
+  add a volume mount for `./frontend/src:/app/src` in `docker-compose.yml`.
 
 ### fish-speech API contract
 
@@ -98,6 +108,12 @@ Key upstream endpoints used:
 - `DELETE /v1/references/delete` — remove a voice
 - `GET  /v1/health` — health check
 
+### LLM / Podcast API contract
+
+The web backend talks to Ollama at `http://llm:11434` (configurable via `LLM_URL`).
+The model used for podcast script generation is set by `LLM_MODEL` (default:
+`qwen2.5:7b`). Relevant backend routes are under `/api/podcast`.
+
 ---
 
 ## Things to watch out for
@@ -106,6 +122,8 @@ Key upstream endpoints used:
   commit it or log its contents.
 - **`checkpoints/`** contains large binary model files and is gitignored. Never
   try to add these to the image or commit them.
+- **`podcast_data/`** is gitignored and used as a volume mount for episode JSON,
+  audio clips, and final audio output.
 - **PowerShell 5.1 compatibility** — the host is Windows. Any `.ps1` scripts must
   work in PowerShell 5.1 (not just PS 7). Avoid `&&` pipeline chains, non-ASCII
   characters without a UTF-8 BOM, and backtick line-continuations with trailing spaces.
@@ -123,13 +141,15 @@ Key upstream endpoints used:
 docker compose up --build
 
 # Tail logs for a specific service
+docker compose logs -f llm
 docker compose logs -f api
 docker compose logs -f web
+docker compose logs -f frontend
 
 # Check the web UI
 Start-Process "http://localhost:3000"
 
-# Check the API directly
+# Check the fish-speech API directly
 Invoke-RestMethod http://localhost:8080/v1/health
 ```
 
@@ -138,3 +158,4 @@ There are no automated tests at present. Manual smoke tests:
 1. Open the UI, generate speech with the default text — audio should play.
 2. Clone a voice (upload any short WAV + transcript), then use it in generation.
 3. Delete the voice from the Voice Library tab.
+4. Generate a podcast episode from the Podcast tab — script and audio should be produced.
