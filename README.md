@@ -1,6 +1,6 @@
 # 🎙️ TTS Fun
 
-> Create expressive speech, clone voices, and produce multi-speaker podcast episodes — entirely on your own hardware.
+> Create expressive speech, clone voices, and produce multi-speaker podcast episodes, entirely on your own hardware.
 > Powered by **[FishAudio S1-mini](https://huggingface.co/fishaudio/openaudio-s1-mini)** (open-source 0.5B TTS) and **[Ollama](https://ollama.com)** for LLM-generated scripts, running in Docker with no cloud dependency.
 
 ---
