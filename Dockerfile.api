@@ -128,6 +128,12 @@ RUN git clone --depth 1 \
         https://github.com/fishaudio/fish-speech.git /app/fish-speech \
     && chown -R ${USER_UID}:${USER_GID} /app/fish-speech
 
+# fish-speech loads the tokenizer from model checkpoints; openaudio-s1-mini
+# requires trusting tokenizer remote code to resolve the custom dual_ar config.
+RUN sed -i \
+    's/AutoTokenizer.from_pretrained(model_path)/AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)/' \
+    /app/fish-speech/fish_speech/tokenizer.py
+
 WORKDIR /app/fish-speech
 
 USER ${USER_UID}:${USER_GID}
