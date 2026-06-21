@@ -130,9 +130,19 @@ RUN git clone --depth 1 \
 
 # fish-speech loads the tokenizer from model checkpoints; openaudio-s1-mini
 # requires trusting tokenizer remote code to resolve the custom dual_ar config.
-RUN sed -i \
-    's/AutoTokenizer.from_pretrained(model_path)/AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)/' \
-    /app/fish-speech/fish_speech/tokenizer.py
+# SECURITY: this is intended only for trusted model checkpoints (the default
+# fishaudio/openaudio-s1-mini download path in this project).
+RUN python3 - <<'PY'
+from pathlib import Path
+
+path = Path("/app/fish-speech/fish_speech/tokenizer.py")
+needle = "AutoTokenizer.from_pretrained(model_path)"
+replacement = "AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)"
+text = path.read_text(encoding="utf-8")
+if needle not in text:
+    raise SystemExit(f"Expected tokenizer load call not found in {path}")
+path.write_text(text.replace(needle, replacement, 1), encoding="utf-8")
+PY
 
 WORKDIR /app/fish-speech
 
